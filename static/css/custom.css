@@ -1,0 +1,200 @@
+.sidebar {
+ font-size: 85% !important;
+ /*font-family: Arial;*/
+}
+
+.navbar {
+ font-size: 82% !important;
+ /*font-family: Arial;*/
+}
+.card-header{
+    font-size: 1rem;
+}
+
+.card-footer-btn {
+    font-size: 1rem;
+}
+.list-group-item{
+    padding: .3rem 1rem;
+}
+.carousel-caption{
+    width: 100%;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    height: 150px;
+    padding-bottom: 40px;
+    padding-left: 40px;
+    padding-right: 40px;
+    background-color: rgba(0,0,0,0.25);
+}
+.home-wide {
+	max-width: 1100px;
+}
+.jumbotron {
+    margin-bottom: 0;
+}
+body {
+    padding-top: 46px;
+    min-height: inherit;
+}
+html {
+    min-height: 92vh;
+}
+
+.text-align-center {
+	text-align: center;
+}
+.thumbnail .widget {
+    background-color: #e9ecef;
+}
+.navbar
+        {
+            border-bottom:1px solid #000;
+        }
+/*.bg-light {*/
+    /*background-color: #5b728a !important;*/
+/*}*/
+
+label{
+    margin-bottom: 0px;
+    margin-top: .5rem;
+}
+
+/*Scrollable Table CSS*/
+.header-fixed {
+    width: 100%
+}
+
+.header-fixed > thead,
+.header-fixed > tbody,
+.header-fixed > thead > tr,
+.header-fixed > tbody > tr,
+.header-fixed > thead > tr > th,
+.header-fixed > tbody > tr > td {
+    display: block;
+}
+
+.header-fixed > tbody > tr:after,
+.header-fixed > thead > tr:after {
+    content: ' ';
+    display: block;
+    visibility: hidden;
+    clear: both;
+}
+
+.header-fixed > tbody {
+    overflow-y: auto;
+    height: 280px;
+}
+
+.header-fixed > tbody > tr > td,
+.header-fixed > thead > tr > th {
+    float: left;
+}
+/*End of Scrollable table CSS*/
+
+.strokeme
+{
+    fill: white;
+    color: white !important;
+    text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+}
+.whitetext{
+
+}
+/*.nav-link .active{*/
+    /*color: lightgrey !important;*/
+/*}*/
+/*.nav-link{*/
+    /*color: white !important;*/
+/*}*/
+
+
+/*
+ * Sidebar
+ */
+
+.sidebar {
+  position: fixed;
+  top: 46px;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  padding: 20px;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+  border-right: 1px solid #eee;
+}
+
+/* Sidebar navigation */
+.sidebar {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sidebar .nav {
+  margin-bottom: 20px;
+}
+
+.sidebar .nav-item {
+  width: 100%;
+}
+
+.sidebar .nav-item + .nav-item {
+  margin-left: 0;
+}
+
+.sidebar .nav-link {
+  border-radius: 0;
+}
+.sidenav-divider {
+    background-color: #cecdcd;
+    height: 1px;
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.bg-faded{
+    background-color: #5f5d5d;
+    border-right: 1px solid #505050;
+}
+
+.nav-pills .nav-item .nav-link {
+    color: white;
+}
+.nav-tabs .nav-item {
+    color: black;
+}
+.betting-title {
+    background-color: #343a40;
+    margin-bottom: 0;
+    padding-left: 3%;
+    color: white;
+    border: 1px black solid;
+}
+.active-grey {
+    background-color: #6c757d;
+    color: white;
+}
+
+.alert {
+    margin-bottom: 0 !important;
+}
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: rgba(52, 58, 64,0.8);
+    -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.5);
+}

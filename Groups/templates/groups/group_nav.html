@@ -1,0 +1,45 @@
+{% load static %}
+{% url 'groups:groupPage' group_id=group.id as group_page %}
+{% url 'groups:tournament_list_view' group_id=group.id as tournament_page %}
+{% url 'groups:adminPage' group_id=group.id as admin_page %}
+{% url 'groups:invitePage' group_id=group.id as invite_page %}
+{% url 'groups:completed_games_list_view' group_id=group.id as completed_games %}
+
+<style>
+    .nav-link.active_community {
+        background-color: #e9ecef !important;
+        border-color: #dee2e6 #b5b5b5 #e9ecef !important;
+        color:black;
+    }
+</style>
+<ul class="nav nav-tabs" style="padding-left: 10%; padding-right: 10%; background-color: #f6f6f6; border-bottom: 1px #b5b5b5 solid;">
+  <li class="nav-item" style="margin-left: 0rem;">
+    <a
+            class="nav-link{% ifequal request.path group_page %} active_community{% endifequal %}"
+            href="{{ group_page }}">
+        <i class="fas fa-home"></i> &nbsp{{ group.name }} Home
+    </a>
+  </li>
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle {% ifequal request.path tournament_page %} active_community{% endifequal %}" data-toggle="dropdown" href="{{ tournament_page }}" role="button" aria-haspopup="true" aria-expanded="false">Tournaments</a>
+    <div class="dropdown-menu">
+      <a class="dropdown-item" href="{{ tournament_page }}?activesection=upcoming">Upcoming</a>
+      <a class="dropdown-item" href="{{ tournament_page }}?activesection=ongoing">Ongoing</a>
+      <a class="dropdown-item" href="{{ tournament_page }}?activesection=completed">Completed</a>
+{#      <div class="dropdown-divider"></div>#}
+{#      <a class="dropdown-item" href="#">Separated link</a>#}
+    </div>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% ifequal  request.get_full_path invite_page %} active_community{% endifequal %}" href="{{ invite_page }}">Invite</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% if admin_page in request.path %} active_community{% endif %}" href="{{ admin_page }}">Admin</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link{% ifequal  request.path completed_games %} active_community{% endifequal %}" href="{{ completed_games }}">Completed Games</a>
+  </li>
+{#  <li class="nav-item">#}
+{#    <a class="nav-link disabled" href="#">Admin</a>#}
+{#  </li>#}
+</ul>

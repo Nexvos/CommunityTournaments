@@ -1,0 +1,140 @@
+{#airplane#}
+{% load static %}
+
+
+<script src="{% static 'groups/miniPie.js' %}"></script>
+<script src="{% static 'js/d3.js' %}"></script>
+
+<style>
+{% block style %}
+.dot {
+  height: 10px;
+  width: 10px;
+  background-color: red;
+  border-radius: 50%;
+  display: inline-block;
+}
+.thumbnail{
+    height: 95%;
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 0px;
+    -webkit-border-radius: 0px;
+    -moz-border-radius: 0px;
+    border-radius: 0px;
+    background-color: #fff;
+    border: 1px solid #b5b5b5;
+}
+svg {
+	display: block;
+    margin: auto;
+}
+.thumbnail img{
+    max-width: 100%;
+}
+.caption{
+    padding: 8px;
+}
+{% endblock %}
+
+</style>
+
+{% for game_betting_group in latest_game_list %}
+
+    <div class="item col-xs-12 col-sm-6 col-md-4 col-lg-4 col-xl-3">
+        <div class="thumbnail rounded">
+            <div class="widget rounded" style="padding-top: 10px; padding-bottom: 10px; position: relative; background-color: rgba(0, 0, 0, 0.03); border-bottom: 1px #b5b5b5 solid;">
+                <div id="chartplaceholder{{ forloop.counter }}" class="chart-container"></div>
+                <div style="position: absolute; height: 35px;width: 35px;left:0px; bottom: 0px; border: 1px #343a40 solid; background-color: #{{ game_betting_group.match.tournament.videogame.colour }};">
+                    <img src="{% if game_betting_group.match.tournament.videogame.picture %}{{ game_betting_group.match.tournament.videogame.picture.url }}{% endif %}" style="margin-left: 5px; margin-bottom: 5px; margin-top: 5px; margin-right: 5px;">
+                </div>
+                {% ifequal game_betting_group.match.status game_betting_group.match.running %}
+                    <div style="top: 0; right: 0; position: absolute; background-color: #343a40; border-radius: 0px 3px 0px 10px; border-bottom: 1px #b5b5b5 solid; border-left: 1px #b5b5b5 solid;">
+                        <p style="padding: 5px; margin-bottom: 0; font-weight: 600; color: white;"><span class="dot"></span> LIVE</p>
+                    </div>
+                {% endifequal %}
+            </div>
+            <div class="caption">
+                <h4 class="group inner list-group-item-heading" style="font-size:1.25rem; margin-top: 0.5rem;"><a href="{% url 'groups:detail' group_id=group.id betting_group_id=game_betting_group.id %}">
+                    {% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a }}{% else %}{{ game_betting_group.match.user_a }}{% endif %} vs {% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b }}{% else %}{{ game_betting_group.match.user_b }}{% endif %}</a></h4>
+
+
+                    <p class="group inner list-group-item-text" style="margin-top: 5px">
+                {{ game_betting_group.match.start_datetime|date:"d-F Y H:i" }}
+                    </p>
+
+                <div class="row">
+
+                    <div class="col-xs-12 col-md-12">
+                        <p class="lead font-weight-bold" style="font-size: 1rem; color:green;">
+                            {{ game_betting_group.match.status }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+    // Create the team data
+    var dataset = [
+    {% for bet in game_betting_group.mbg_bets.all %}
+        {
+        name:'{{ bet.user }}',
+        amount:{{ bet.amount }},
+        percent: 50,
+        team:'{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user }}{% endif %}',
+        colour:'#{{ bet.user.profile.colour }}'
+        },
+    {% endfor %}
+    ];
+
+    var teamdata_a_amount = 0;
+    var teamdata_b_amount = 0;
+
+    if (dataset === undefined || dataset.length == 0){
+        teamdata_a_amount = 1;
+        teamdata_b_amount = 1;
+    }
+    else{
+        for (i in dataset){
+           if (dataset[i].team=='{% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a }}{% else %}{{ game_betting_group.match.user_a }}{% endif %}') {
+               teamdata_a_amount += dataset[i].amount;
+           }
+           else if(dataset[i].team=='{% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b }}{% else %}{{ game_betting_group.match.user_b }}{% endif %}'){
+               teamdata_b_amount += dataset[i].amount;
+           }
+        };
+    };
+
+    var total_ab_amount = teamdata_a_amount + teamdata_b_amount;
+    var teamdata_a_percent = (teamdata_a_amount / total_ab_amount) * 100;
+    var teamdata_b_percent = (teamdata_b_amount / total_ab_amount) * 100;
+
+    var team_dataset = [
+        {
+        name:'{% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b }}{% else %}{{ game_betting_group.match.user_b }}{% endif %}',
+        amount:teamdata_b_amount,
+        percent: teamdata_b_percent,
+        team:'{% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b }}{% else %}{{ game_betting_group.match.user_b }}{% endif %}',
+        colour:'#{% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b.colour }}{% else %}{{ game_betting_group.match.user_b.colour }}{% endif %}'
+    },
+    {
+        name:'{% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a }}{% else %}{{ game_betting_group.match.user_a }}{% endif %}',
+        amount:teamdata_a_amount,
+        percent: teamdata_a_percent,
+        team:'{% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a }}{% else %}{{ game_betting_group.match.user_a }}{% endif %}',
+        colour:'#{% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a.colour }}{% else %}{{ game_betting_group.match.user_a.colour }}{% endif %}'
+        }];
+    var loop_addition = 0;
+    if (typeof loop_number !== 'undefined') {
+    // the variable is defined
+        loop_addition = loop_number;
+    }
+    $("#chartplaceholder{{ forloop.counter }}").attr("id", function(){
+        return "chart"+({{ forloop.counter }} + loop_addition).toString()
+    });
+    InitialPie(team_dataset, {{ forloop.counter }} + loop_addition);
+
+
+    </script>
+{% endfor %}

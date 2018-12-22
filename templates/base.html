@@ -1,0 +1,68 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+
+    <title>{% block head_title %}Transparent Betting{% endblock %}</title>
+
+    {% include 'head_css.html' %}
+
+      <style>
+      {% block style %}{% endblock %}
+      </style>
+    {% block extracss %} {% endblock %}
+
+
+  </head>
+
+  <body>
+  {% include 'navbar.html' %}
+<main class="container-fluid" style=" padding: 0; min-height: inherit; font-size: 80%;">
+
+{% if form.errors %}
+    {% for field in form %}
+        {% for error in field.errors %}
+            <div class="alert alert-danger">
+                <strong>{{ error|escape }}</strong>
+            </div>
+        {% endfor %}
+    {% endfor %}
+    {% for error in form.non_field_errors %}
+        <div class="alert alert-danger">
+            <strong>{{ error|escape }}</strong>
+        </div>
+    {% endfor %}
+{% endif %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-success">
+            <strong>{{ message }}</strong>
+        </div>
+    {% endfor %}
+{% endif %}
+    {% block jumbotron %}
+
+    {% endblock %}
+
+<div class="container home-wide" style="padding-top: 15px">
+
+        {% block content %}
+
+        {% endblock %}
+</div>
+
+</main> <!-- /container -->
+
+    {% include "javascript.html" %}
+
+
+  </body>
+</html>

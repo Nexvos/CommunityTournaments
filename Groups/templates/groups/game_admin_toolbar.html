@@ -1,0 +1,222 @@
+{% load static %}
+{% include 'datetime_css_js.html' %}
+
+<ul class="nav nav-pills" id="myTab" role="tablist" style="background-color: #0c5460">
+  <li class="nav-item">
+    <p class="nav-link" style="margin-bottom: 0; font-weight: 700;">Admin Toolbar</p>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="date-tab" data-toggle="tab" href="#date" role="tab" aria-controls="date" aria-selected="false">Change Date and Duration</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="profile-tab" data-toggle="tab" href="#profile" role="tab" aria-controls="profile" aria-selected="false">Update Status</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="messages-tab" data-toggle="tab" href="#messages" role="tab" aria-controls="messages" aria-selected="false">Declare Winner</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" id="settings-tab" data-toggle="tab" href="#settings" role="tab" aria-controls="settings" aria-selected="false">Settings</a>
+  </li>
+</ul>
+
+<!-- Tab panes -->
+<div class="tab-content" >
+  <div class="tab-pane" id="date" role="tabpanel" aria-labelledby="date-tab">
+      <form method='POST' action='{% url "groups:detail" group_id=group.id betting_group_id=game_bgg.id %}' style="padding: 2rem 1rem 1rem 1rem; background-color: #336f7a; color: white;">{% csrf_token %}
+        <input type="hidden" id="form_name" name="form_name" value="date_form">
+          <div class="row" style="margin-bottom: 1rem;">
+            <div class="col-sm-3">
+                <p class="font-weight-bold">
+                    Start Date:
+                </p>
+                <p class="info">
+                    Selecting this requires new members to be invited (cannot join through the group page).
+                </p>
+            </div>
+            <div class="col-sm-3">
+                    <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                      <input class="datepicker form-control" name="game_start_datetime" id="GameStartDatetime">
+                    </div>
+            </div>
+            <div class="col-sm-3">
+                <p class="font-weight-bold">
+                    Expected Duration:
+                </p>
+                <p class="info">
+                    Selecting this allows any member of the group to send invites (If unselected only admins will be able to send invites).
+                </p>
+            </div>
+            <div class="col-sm-3">
+                    <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                      <input type="number" class="form-control" name="game_duration" id="GameEndDatetime">
+                    </div>
+            </div>
+        </div>
+            <div class="row" style="">
+                <div class="col-sm-12" style="text-align: center">
+                    <button class="btn btn-primary" style="width: 30%; display: inline-block;">Save</button>
+                </div>
+            </div>
+      </form>
+  </div>
+  <div class="tab-pane" id="profile" role="tabpanel" aria-labelledby="profile-tab" style="border-bottom: black 1px solid;">
+      <form method='POST' action='{% url "groups:detail" group_id=group.id betting_group_id=game_bgg.id %}' style="padding: 2rem 1rem 1rem 1rem; background-color: #336f7a; color: white;">{% csrf_token %}
+        <input type="hidden" id="form_name" name="form_name" value="status_form">
+          <div class="row" style="margin-bottom: 1rem;">
+            <div class="col-sm-9">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Not started
+                        </p>
+                        <p>
+                            This is the default status for games where the current datetime is before the scheduled game datetime.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Starting
+                        </p>
+                        <p>
+                            Games automatically change to this status 30 minutes before the scheduled game datetime.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Running
+                        </p>
+                        <p>
+                            Games automatically change to this status at the scheduled game datetime.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Finished
+                        </p>
+                        <p>
+                            Games automatically change to this status 30 minutes after the scheduled game datetime + the expected game duration.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Finished - Not yet confirmed
+                        </p>
+                        <p>
+                            Games automatically change to this status 30 minutes after the scheduled game datetime + the expected game duration.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Finished - Confirmed
+                        </p>
+                        <p>
+                            Games automatically change to this status after an admin has declared a winner.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="font-weight-bold">
+                            Finished - All bets paid
+                        </p>
+                        <p>
+                            Games automatically change to this status after an admin has declared a winner.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-3">
+                <div style="margin-bottom: 1rem;">
+                    <p class="font-weight-bold" style="display: inline; margin-bottom: 1rem;">
+                        Current Status:
+                    </p>
+                    <p class="info" style="display: inline">
+                        {{ game_bgg.match.get_status_display }}
+                    </p>
+                </div>
+                <p class="font-weight-bold">
+                    New Status:
+                </p>
+                    <div class="form-check" style="padding-left: 0; padding-right: 1rem;">
+                        <div class="form-group">
+                            <select name="tournament_id" class="form-control" id="exampleFormControlSelect1">
+                              {% for stautus_label, status in game_bgg.match.available_statuses %}
+                                <option value="">{{ status }}</option>
+                              {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+            </div>
+
+
+        </div>
+            <div class="row" style="">
+                <div class="col-sm-12" style="text-align: center">
+                    <button class="btn btn-primary" style="width: 30%; display: inline-block;">Update</button>
+                </div>
+            </div>
+      </form>
+  </div>
+  <div class="tab-pane" id="messages" role="tabpanel" aria-labelledby="messages-tab">
+      <form method='POST' action='{% url "groups:detail" group_id=group.id betting_group_id=game_bgg.id %}' style="padding: 2rem 1rem 1rem 1rem; background-color: #336f7a; color: white;">{% csrf_token %}
+        <input type="hidden" id="form_name" name="form_name" value="winner_form">
+          <div class="row" style="margin-bottom: 1rem;">
+            <div class="col-sm-4">
+                <p class="font-weight-bold">
+                    Explanation:
+                </p>
+                <p class="info">
+                    Selecting this requires new members to be invited (cannot join through the group page).
+                </p>
+            </div>
+            <div class="col-sm-4">
+                <p class="font-weight-bold">
+                    Current Winner:
+                </p>
+                <p class="info">
+                    {% ifequal game_bgg.match.winner game_bgg.match.not_decided %}
+                        No winner has yet been selected.
+                    {% endifequal %}
+                    {% ifequal game_bgg.match.winner game_bgg.match.a_winner %}
+                        {% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}
+                    {% endifequal %}
+                    {% ifequal game_bgg.match.winner game_bgg.match.b_winner %}
+                        {% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}
+                    {% endifequal %}
+                </p>
+            </div>
+            <div class="col-sm-4">
+                <p class="font-weight-bold">
+                    Winner:
+                </p>
+                <div class="form-check" style="padding-left: 0; padding-right: 1rem;">
+                    <div class="form-group">
+                        <select name="tournament_id" class="form-control" id="exampleFormControlSelect1">
+                            {% if game_bgg.match.team_a %}
+                                <option value="">{{ game_bgg.match.team_a }}</option>
+                            {% else %}
+                                <option value="">{{ game_bgg.match.user_a }}</option>
+                            {% endif %}
+                            {% if game_bgg.match.team_b %}
+                                <option value="">{{ game_bgg.match.team_b }}</option>
+                            {% else %}
+                                <option value="">{{ game_bgg.match.user_b }}</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+            <div class="row" style="">
+                <div class="col-sm-12" style="text-align: center">
+                    <button class="btn btn-primary" style="width: 30%; display: inline-block;">Save</button>
+                </div>
+            </div>
+      </form>
+  </div>
+  <div class="tab-pane" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+      ...
+  </div>
+</div>
+
+<script>
+    $('#GameStartDatetime').bootstrapMaterialDatePicker({ format : 'HH:mm - DD/MM/YYYY' });
+</script>

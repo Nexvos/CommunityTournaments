@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+
+{% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+    {% include 'groups/group_jumbotron.html' with title_pager="Admin Page" %}
+
+    {% include 'groups/group_nav.html' %}
+
+{% endblock %}
+
+
+{% block content %}
+    {% url 'groups:adminPage' group_id=group.id as admin_options_page %}
+    {% url 'groups:adminPageAddGames' group_id=group.id as admin_add_game_page %}
+    {% url 'groups:adminPageEditGames' group_id=group.id as admin_edit_game_page %}
+    {% url 'groups:adminPageAddTournament' group_id=group.id as admin_add_tournament_page %}
+    {% url 'groups:adminPageEditTournament' group_id=group.id as admin_edit_tournament_page %}
+    {% url 'groups:adminPageTournaments' group_id=group.id as admin_tournament_page %}
+    {% url 'groups:adminPageMembers' group_id=group.id as admin_member_page %}
+
+
+<div class="row" style="padding-top: 1rem;">
+    <div class="col-sm-2">
+        <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
+          <a class="nav-link {% ifequal request.path admin_options_page %} active {% endifequal %}" href="{{ admin_options_page }}">
+              General Options
+          </a>
+          <a class="nav-link {% ifequal request.path admin_tournament_page %} active {% endifequal %}" href="{{ admin_tournament_page }}">
+              Public Tournaments
+          </a>
+          <a class="nav-link {% ifequal request.path admin_add_tournament_page %} active {% endifequal %}" href="{{ admin_add_tournament_page }}">
+              Add Custom Tournament
+          </a>
+          <a class="nav-link {% ifequal request.path admin_edit_tournament_page %} active {% endifequal %}" href="{{ admin_edit_tournament_page }}">
+              Edit Custom Tournament
+          </a>
+          <a class="nav-link {% ifequal request.path admin_add_game_page %} active {% endifequal %}" href="{{ admin_add_game_page }}">
+              Add Custom Games
+          </a>
+          <a class="nav-link {% ifequal request.path admin_edit_game_page %} active {% endifequal %}" href="{{ admin_edit_game_page }}">
+              Edit Custom Games
+          </a>
+          <a class="nav-link {% ifequal request.path admin_member_page %} active {% endifequal %}" href="{{ admin_member_page }}">
+              Edit Existing Members
+          </a>
+        </div>
+
+    </div>
+    <div class="col-sm-10">
+
+      {% ifequal request.path admin_options_page %}
+        {% include 'groups/group_admin/admin_general_options.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_tournament_page %}
+        {% include 'groups/group_admin/admin_public_tournaments.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_add_tournament_page %}
+        {% include 'groups/group_admin/admin_add_tournament.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_edit_tournament_page %}
+        {% include 'groups/group_admin/admin_edit_tournament.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_add_game_page %}
+        {% include 'groups/group_admin/admin_add_game.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_edit_game_page %}
+        {% include 'groups/group_admin/admin_edit_game.html' %}
+      {% endifequal %}
+
+      {% ifequal request.path admin_member_page %}
+        {% include 'groups/group_admin/admin_members.html' %}
+      {% endifequal %}
+    </div>
+</div>
+
+
+{% endblock %}

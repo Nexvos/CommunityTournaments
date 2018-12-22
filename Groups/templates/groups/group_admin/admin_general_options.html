@@ -1,0 +1,104 @@
+
+<form method='POST' action='{% url "groups:adminPage" group_id=group.id %}'>{% csrf_token %}
+
+    <div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Daily Payout:
+        </p>
+        <p class="info">
+            This is the amount of points member will gain per day.
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                  <input name="daily_payout" type="number" class="form-control" aria-label="Amount (to the nearest pound)" min="0.01" step="0.01" max="10000" placeholder="5.00" id="daily_payout" required>
+            </div>
+    </div>
+</div>
+
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Invite Only:
+        </p>
+        <p class="info">
+            Selecting this requires new members to be invited (cannot join through the group page).
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+              <input class="form-check-input" type="checkbox" name="invite_only" value="True" id="InviteOnlyCheckbox" style="height: 25px; width: 25px;">
+            </div>
+    </div>
+</div>
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Allow Members to Send Invites:
+        </p>
+        <p class="info">
+            Selecting this allows any member of the group to send invites (If unselected only admins will be able to send invites).
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+              <input class="form-check-input" type="checkbox" name="members_can_invite" value="True" id="MembersCanInviteCheckbox" style="height: 25px; width: 25px;">
+            </div>
+    </div>
+</div>
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Change group header background colour:
+        </p>
+        <p class="info">
+            This is the background colour behind the group name at the top of the page. By default this is white.
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div id="div_id_colour" class="control-group" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                <div class="controls">
+                    <input type="text" name="header_background_colour" class="jscolor form-control" value="ffffff" maxlength="7" required id="header_background_colour" style="width: 90%;"/>
+                </div>
+            </div>
+    </div>
+</div>
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Change group header text colour:
+        </p>
+        <p class="info">
+            This is the text colour of the group name at the top of the page. By default this is black.
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div id="div_id_colour" class="control-group" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                <div class="controls">
+                    <input type="text" name="header_text_colour" class="jscolor form-control" value="000000" maxlength="7" required id="header_text_colour" style="width: 90%;"/>
+                </div>
+            </div>
+    </div>
+</div>
+<div class="row" style="margin-bottom: 1rem;">
+    <div class="col-sm-12" style="text-align: center">
+        <button class="btn btn-primary" style="width: 30%; display: inline-block;">Save</button>
+    </div>
+</div>
+</form>
+
+<script>
+    // Set fields to database values
+    $("#daily_payout").attr("value","{{ group.daily_payout }}");
+    if ("{{ group.private }}" == "True") {
+        $("#InviteOnlyCheckbox").attr("checked","checked");
+    };
+    if ("{{ group.members_can_inv }}" == "True") {
+        $("#MembersCanInviteCheckbox").attr("checked","checked");
+    };
+    console.log("{{ group.private }}, {{ group.members_can_inv }}")
+    $("#header_background_colour").attr("value","{{ group.header_background_colour }}");
+    $("#header_text_colour").attr("value","{{ group.header_text_colour }}");
+
+</script>

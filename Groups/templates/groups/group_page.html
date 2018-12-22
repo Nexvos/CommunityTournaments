@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+
+
+{% block head_title %}Betting | {{ block.super }}{% endblock %}
+
+
+{% block extracss %}
+    {% load static %}
+
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+
+{% include 'groups/group_jumbotron.html' with title_pager="" %}
+
+{% include 'groups/group_nav.html' %}
+
+{% endblock %}
+
+{% block content %}
+
+    <div class="betting-title rounded row" style=" margin-right: 0; margin-left: 0;">
+        <div class="col-sm-8">
+            <h4 class="display-4" style="font-size: 2.3rem;font-weight: 500; margin-bottom: .25rem;">Tournaments </h4>
+        </div>
+        <div class="col-sm-4">
+{#            <a#}
+{#                    class="btn btn-dark float-md-right"#}
+{#                    style="font-size: 0.75rem; position: relative; top: 50%; transform: translateY(-50%); border: 1px white solid;"#}
+{#                    href="{% url 'community:tournament_list_view' community_id=group.community_id %}?{% if query %}q={{ query }}&{% endif %}activesection=completed"#}
+{#            >#}
+{#                <strong>View completed tournaments</strong>#}
+{#            </a>#}
+        </div>
+    </div>
+    <div class="row" style="margin-right: 0px; margin-left: 0px;">
+        <div class="col-sm-4" style="padding-top: 15px; padding-bottom: 15px; padding-left: 0px;">
+        <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
+          <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Upcoming*</span></h5>
+          <div class="card-body" {% if upcoming_tournaments %}style="padding: 0;" {% endif %}>
+            {% if upcoming_tournaments %}
+            <div class="list-group">
+                {% for tournament in upcoming_tournaments %}
+
+                    <a
+                            class="list-group-item list-group-item-action list-group-item-dark"
+                            href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                            style="background-color:#{{ tournament.videogame.colour }}; border-radius: 0px;"
+                            onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                            onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+                    >
+                        <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                    </a>
+
+                {% endfor %}
+            </div>
+            {% else %}
+                <p class="card-text"> No upcoming tournaments. </p>
+            {% endif %}
+          </div>
+        <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">
+          <a
+                  class= "btn btn-light btn-lg btn-block card-footer-btn"
+                  style="background-color: rgba(0, 0, 0, 0.02);"
+                  onMouseOver="this.style.border='1px grey solid';"
+                  onMouseOut="this.style.border='1px rgba(0, 0, 0, 0.02) solid';"
+                  href="{% url 'groups:tournament_list_view' group_id=group.id %}?{% if query %}q={{ query }}&{% endif %}activesection=upcoming">
+              View all Upcoming Tournaments
+          </a>
+        </div>
+        </div>
+        </div>
+
+        <div class="col-sm-8" style="padding-top: 15px; padding-bottom: 15px; padding-right: 0px;">
+
+
+        <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
+            <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"><span data-toggle="tooltip" data-placement="right" title="Only 8 tournaments displayed">Ongoing*</span></h5>
+          <div class="card-body" {% if ongoing_tournaments1 %}style="padding: 0;" {% endif %}>
+            {% if ongoing_tournaments1 %}
+            <div class="row" style="margin-right: 0px; margin-left: 0px;">
+                <div class="col-sm-6" style="padding: 0px;">
+                    <div class="list-group">
+                        {% for tournament in ongoing_tournaments1 %}
+                            <a
+                                    class="list-group-item list-group-item-action list-group-item-dark"
+                                    href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                                    style="background-color:#{{ tournament.videogame.colour }}; border-radius: 0px;"
+                                    onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                                    onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+                            >
+                                <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                            </a>
+
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-sm-6" style="padding: 0px;">
+                    <div class="list-group">
+                        {% for tournament in ongoing_tournaments2 %}
+
+                            <a
+                                    class="list-group-item list-group-item-action list-group-item-dark"
+                                    href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                                    style="background-color:#{{ tournament.videogame.colour }}; border-radius: 0px;"
+                                    onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                                    onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+                            >
+                                <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                            </a>
+
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+                <p class="card-text"> No ongoing tournaments. </p>
+            {% endif %}
+          </div>
+        <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">
+          <a
+                  class= "btn btn-light btn-lg btn-block card-footer-btn"
+                  style="background-color: rgba(0, 0, 0, 0.02);"
+                  onMouseOver="this.style.border='1px grey solid';"
+                  onMouseOut="this.style.border='1px rgba(0, 0, 0, 0.02) solid';"
+                  href="{% url 'groups:tournament_list_view' group_id=group.id %}?{% if query %}q={{ query }}&{% endif %}activesection=ongoing">
+              View all Ongoing Tournaments
+          </a>
+        </div>
+        </div>
+
+
+
+        </div>
+
+{#        <div class="col-sm-4" style="padding-top: 15px; padding-bottom: 15px;">#}
+{#        <div class="card" style="border: 1px solid #b5b5b5;">#}
+{#          <h5 class="card-header">Completed</h5>#}
+{#          <div class="card-body" {% if completed_tournaments %}style="padding: 0;" {% endif %}>#}
+{#            {% if completed_tournaments %}#}
+{#            <div class="list-group">#}
+{#                {% for tournament in completed_tournaments %}#}
+{##}
+{#                        <a class="list-group-item list-group-item-action list-group-item-dark" href="{% url 'userBetting:tournament_view' tournament.tournament_id %}">#}
+{#                            {{ tournament.tournament_name }}#}
+{#                        </a>#}
+{##}
+{#                {% endfor %}#}
+{#            </div>#}
+{#            {% else %}#}
+{#                <p class="card-text">No tournaments completed in the last 3 months.</p>#}
+{#            {% endif %}#}
+{#          </div>#}
+{#        </div>#}
+{#        </div>#}
+    </div>
+    <div class="betting-title rounded row" style=" margin-right: 0px; margin-left: 0px;">
+        <div class="col-sm-8">
+            <h4 class="display-4" style="font-size: 2.3rem;font-weight: 500; margin-bottom: .25rem;">Games </h4>
+        </div>
+        <div class="col-sm-4">
+{#            <a#}
+{#                    class="btn btn-dark float-md-right"#}
+{#                    style="font-size: 0.75rem; position: relative; top: 50%; transform: translateY(-50%); border: 1px white solid;"#}
+{#                    href="{% url "community:completed_games_list_view" community_id=group.community_id %}{% if query %}?q={{ query }}{% endif %}"#}
+{#            >#}
+{#                <strong>View completed games</strong>#}
+{#            </a>#}
+        </div>
+    </div>
+    <br>
+    {% if latest_game_list %}
+        <div id="games_list" class="row grid-view">
+            {% include 'groups/games_list.html' %}
+        </div>
+        <div>
+            <button class= "btn btn-primary btn-lg btn-block" id="lazyLoadLink" data-page=2>Load more</button>
+        </div>
+        <br>
+    {% else %}
+        <p>No games are available at this time.</p>
+    {% endif %}
+
+<script>
+
+
+// needed when making post requests in Django
+// we’ll use this for the ajax request in script.js
+window.CSRF_TOKEN = "{{ csrf_token }}";
+
+$('#lazyLoadLink').on('click', function() {
+    console.log("working?");
+    var link = $(this);
+    var page = link.data("page");
+    console.log(page)
+    $.ajax({
+      type: 'post',
+      url: '{% url 'groups:lazy_load_posts' %}',
+      data: {
+        'page': page,
+        'csrfmiddlewaretoken': window.CSRF_TOKEN // from index.html
+      },
+      success: function(data) {
+        // if there are still more pages to load,
+        // add 1 to the "Load More Posts" link's page data attribute
+        // else hide the link
+        console.log("Dat re");
+        if (data.has_next) {
+            link.data('page', page+1);
+        } else {
+            link.hide();
+        };
+        // append html to the posts div
+
+        $('#games_list').append(data.games_list_html);
+      },
+      error: function(xhr, status, error) {
+        // shit happens friends!
+      }
+    });
+  });
+
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+})
+</script>
+<style>
+
+
+.item.list-group-item .list-group-image
+{
+    margin-right: 10px;
+}
+.item.list-group-item .thumbnail
+{
+    margin-bottom: 0px;
+}
+.item.list-group-item .caption
+{
+    padding: 9px 9px 0px 9px;
+}
+
+
+.item.list-group-item img
+{
+    float: left;
+}
+
+.list-group-item-text
+{
+    margin: 0 0 11px;
+}
+
+</style>
+
+{% endblock %}

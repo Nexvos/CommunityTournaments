@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+
+{% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+    {% include 'groups/group_jumbotron.html' with title_pager="Invite Page" %}
+
+    {% include 'groups/group_nav.html' %}
+
+{% endblock %}
+
+
+{% block content %}
+<form action="{% url 'groups:invitePage' group_id=group.id %}" method="post">{% csrf_token %}
+<div class="row">
+    <div class="col-md-3">
+        <input class="form-control" type="text" onkeyup="searchFunction()" placeholder="Search" aria-label="Search" id="nameSearch">
+    </div>
+
+    <div class="col-md-9">
+        <ul class="list-group" id="myUL">
+        {% for user_invite in model_array %}
+            <li class="list-group-item list-group-item-action">
+                {{ user_invite.user.username }}
+            <div style="float: right;">
+                {% if user_invite.invite_status == 'invite' %}
+                    <button name="profile_id" type="submit" value="{{ user_invite.user.profile.id }}" class="btn btn-primary" style="font-size: 80%">
+                        Invite
+                    </button>
+                {% endif %}
+                {% if user_invite.invite_status == 'sent' %}
+                    <button name="profile_id" type="submit" value="{{ user_invite.user.profile.id }}" class="btn btn-secondary" style="font-size: 80%">
+                        Invite pending
+                    </button>
+                {% endif %}
+                {% if user_invite.invite_status == 'member' %}
+                    <button name="profile_id" type="submit" value="{{ user_invite.user.profile.id }}" class="btn btn-info" style="font-size: 80%">
+                        Member
+                    </button>
+                {% endif %}
+                {% if user_invite.invite_status == 'blocked' %}
+                    <button name="profile_id" type="submit" value="{{ user_invite.user.profile.id }}" class="btn btn-warning" style="font-size: 80%">
+                        Member is blocking invites
+                    </button>
+                {% endif %}
+            </div>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+</form>
+<script>
+function searchFunction() {
+    var input, filter, ul, li, a, i;
+    input = document.getElementById("nameSearch");
+    filter = input.value.toUpperCase();
+    ul = document.getElementById("myUL");
+    li = ul.getElementsByTagName("li");
+    for (i = 0; i < li.length; i++) {
+        a = li[i].getElementsByTagName("a")[0];
+        if (a.innerHTML.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+        } else {
+            li[i].style.display = "none";
+        }
+    }
+}
+</script>
+{% endblock %}
+

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head_title %}Completed Games | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    {% load static %}
+
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+{% include 'groups/group_jumbotron.html' with title_pager="Completed Games" %}
+
+    {% include 'groups/group_nav.html' %}
+
+{% endblock %}
+
+{% block content %}
+
+  {% if latest_game_list %}
+        <div id="games_list" class="row grid-view">
+            {% include 'groups/games_list.html' %}
+        </div>
+  {% else %}
+        <p>No completed games are available at this time.</p>
+  {% endif %}
+{##}
+{#<div class="list-group">#}
+{#{% for profile in model %}#}
+{#    <a href="{% url 'profiles:profile-public' profile.username %}" class="list-group-item list-group-item-action">#}
+{#        {{ profile.username }}#}
+{#    </a>#}
+{#{% endfor %}#}
+{#</div>#}
+
+{% endblock %}

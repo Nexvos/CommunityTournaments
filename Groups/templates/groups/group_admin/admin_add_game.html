@@ -1,0 +1,120 @@
+{% include 'datetime_css_js.html' %}
+
+<div class="betting-title rounded row" style=" margin-right: 0px; margin-left: 0px; margin-bottom: 1rem">
+    <div class="col-sm-8">
+        <h4 class="display-4" style="font-size: 2.3rem;font-weight: 500; margin-bottom: .25rem;">Create Game </h4>
+    </div>
+    <div class="col-sm-4">
+
+    </div>
+</div>
+
+<form method='POST' style="padding-left: 0.5rem;" action='{% url "groups:adminPageAddGames" group_id=group.id %}'>{% csrf_token %}
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Tournament:
+        </p>
+        <p class="info">
+            Names must be unique to your group and can only contain standard letters and numbers
+        </p>
+    </div>
+    <div class="col-sm-4">
+        <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+            <div class="form-group">
+                <select name="tournament_id" class="form-control" id="exampleFormControlSelect1">
+                  {% for tournament in group.owning_group_tournaments.all %}
+                    <option value="{{ tournament.id }}">{{ tournament.name }}</option>
+                  {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Users:
+        </p>
+        <p class="info">
+            This is the amount of points member will gain per day.
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; width: 100%;">
+                <div class="form-group" style="width: 100%;">
+                    <select name="user_a" class="form-control" id="exampleFormControlSelect1" style="width: 35%; display: inline-block;">
+                      {% for profile in group.groups_profile.all %}
+                        <option value="{{ profile.user.id }}">{{ profile.user }}</option>
+                      {% endfor %}
+                    </select>
+                vs
+
+                    <select name="user_b" class="form-control" id="exampleFormControlSelect1" style="width: 35%; display: inline-block;">
+                      {% for profile in group.groups_profile.all %}
+                        <option value="{{ profile.user.id }}">{{ profile.user }}</option>
+                      {% endfor %}
+                    </select>
+                </div>
+            </div>
+    </div>
+</div>
+
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Start Date:
+        </p>
+        <p class="info">
+            Selecting this requires new members to be invited (cannot join through the group page).
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+              <input class="datepicker form-control" name="game_start_datetime" id="GameStartDatetime">
+            </div>
+    </div>
+</div>
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Expected Duration:
+        </p>
+        <p class="info">
+            Selecting this allows any member of the group to send invites (If unselected only admins will be able to send invites).
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%);">
+              <input type="number" class="form-control" name="game_duration" id="GameEndDatetime">
+            </div>
+    </div>
+</div>
+<div class="row" style="border-bottom: 1px solid #c3c3c3; margin-bottom: 1.25rem;">
+    <div class="col-sm-8">
+        <p class="font-weight-bold">
+            Twitch URL:
+        </p>
+        <p class="info">
+            This is the background colour behind the group name at the top of the page. By default this is white.
+        </p>
+    </div>
+    <div class="col-sm-4">
+            <div id="div_id_colour" class="control-group" style="position: absolute; top: 50%; transform: translateY(-50%);">
+                <div class="form-check">
+                    <input type="text" class="form-control" name="twitch_url" required id="twitch_url"/>
+                </div>
+            </div>
+    </div>
+</div>
+
+<div class="row" style="margin-bottom: 1rem;">
+    <div class="col-sm-12" style="text-align: center">
+        <button class="btn btn-primary" style="width: 30%; display: inline-block;">Save</button>
+    </div>
+</div>
+</form>
+
+<script>
+    $('#GameStartDatetime').bootstrapMaterialDatePicker({ format : 'HH:mm - DD/MM/YYYY' });
+</script>

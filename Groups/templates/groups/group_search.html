@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+
+
+
+{% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    {% load static %}
+    <style>
+        main {
+        background-color: #e9ecef;
+    }
+    .home-wide {
+        margin-top: 2rem;
+    }
+    body { height:100vh; }
+    </style>
+{% endblock %}
+
+{% block jumbotron %}
+
+{% endblock %}
+
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3">
+        <input class="form-control" type="text" onkeyup="searchFunction()" placeholder="Search" aria-label="Search" id="nameSearch">
+    </div>
+
+    <div class="col-md-9">
+        <form action="{% url 'groups:groupSearch' %}" method="post">{% csrf_token %}
+            <ul class="list-group" id="myUL">
+            {% for wallet in wallets %}
+                {% ifequal wallet.status wallet.active %}
+                <li class="list-group-item list-group-item-action" style="background-color: #bae5ff;">
+                    <a href="#" class="" style="color: black;">
+                        {% ifequal wallet.group.private True %}<i class="fas fa-lock"></i>{% endifequal %} {{ wallet.group.name }}
+                    </a>
+                    <div style="float: right;">
+                        <button class="btn btn-dark" name="group_id" type="submit" value="{{ wallet.group.id }}" style="font-size: 80%">Already a Member</button>
+                    </div>
+                </li>
+                {% else %}
+                    {% ifequal wallet.status wallet.requesting_invite %}
+                        <li class="list-group-item list-group-item-action" style="background-color: #bdffc5;">
+                            <a href="#" class="" style="color: black;">
+                                {% ifequal wallet.group.private True %}<i class="fas fa-lock"></i>{% endifequal %} {{ wallet.group.name }}
+                            </a>
+                            <div style="float: right;">
+                                <button class="btn btn-dark" name="group_id" type="submit" value="{{ wallet.group.id }}" style="font-size: 80%">Invite Pending</button>
+                            </div>
+                        </li>
+                    {% else%}
+                        {% ifequal wallet.group.private True %}
+                            <li class="list-group-item list-group-item-action" style="background-color: #f6f6f6;">
+                                <a href="#" class="">
+                                    <i class="fas fa-lock"></i> {{ wallet.group.name }}
+                                </a>
+                                <div style="float: right;">
+                                    <button class="btn btn-info" name="group_id" type="submit" value="{{ wallet.group.id }}" style="font-size: 80%">Ask for Invite</button>
+                                </div>
+                            </li>
+                        {% else %}
+                            <li class="list-group-item list-group-item-action">
+                                <a href="#" class="">
+                                    {{ wallet.group.name }}
+                                </a>
+                                <div style="float: right;">
+                                    <button class="btn btn-primary" name="group_id" type="submit" value="{{ wallet.group.id }}" style="font-size: 80%">Join</button>
+                                </div>
+                            </li>
+                        {% endifequal %}
+                    {% endifequal %}
+                {% endifequal %}
+            {% endfor %}
+            {% for group in model %}
+                {% ifequal group.private True %}
+                    <li class="list-group-item list-group-item-action" style="background-color: #f6f6f6;">
+                        <a href="#" class="">
+                            <i class="fas fa-lock"></i> {{ group.name }}
+                        </a>
+                        <div style="float: right;">
+                            <button class="btn btn-info" name="group_id" type="submit" value="{{ group.id }}" style="font-size: 80%">Ask for Invite</button>
+                        </div>
+                    </li>
+                {% else %}
+                    <li class="list-group-item list-group-item-action">
+                        <a href="#" class="">
+                            {{ group.name }}
+                        </a>
+                        <div style="float: right;">
+                            <button class="btn btn-primary" name="group_id" type="submit" value="{{ group.id }}" style="font-size: 80%">Join</button>
+                        </div>
+                    </li>
+                {% endifequal %}
+            {% endfor %}
+            </ul>
+        </form>
+    </div>
+</div>
+
+<script>
+function searchFunction() {
+    var input, filter, ul, li, a, i;
+    input = document.getElementById("nameSearch");
+    filter = input.value.toUpperCase();
+    ul = document.getElementById("myUL");
+    li = ul.getElementsByTagName("li");
+    for (i = 0; i < li.length; i++) {
+        a = li[i].getElementsByTagName("a")[0];
+        if (a.innerHTML.toUpperCase().indexOf(filter) > -1) {
+            li[i].style.display = "";
+        } else {
+            li[i].style.display = "none";
+        }
+    }
+}
+</script>
+
+{% endblock %}

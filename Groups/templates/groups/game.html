@@ -1,0 +1,491 @@
+{% extends "base.html" %}
+
+{% load staticfiles %}
+{% load mathfilters %}
+
+
+{% block head_title %}Betting | {{ block.super }}{% endblock %}
+
+<style>
+{% block style %}
+.navbar-static-top {
+	margin-bottom: 0px !important;
+}
+
+{#.bet-path {#}
+{#    mask: url(#mask);#}
+
+.jumbotron {
+	background: linear-gradient(
+            to right,
+            rgb({% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour_rgb_whitened }}{% else %}{{ game_bgg.match.user_a.colour_rgb_whitened }}{% endif %}),
+            #e7e7e7,
+            #e7e7e7,
+            #e7e7e7,
+            rgb({% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour_rgb_whitened }}{% else %}{{ game_bgg.match.user_b.colour_rgb_whitened }}{% endif %})
+    ) !important;
+	color: #000000 !important;
+    width: 100% !important;
+    border-bottom: 1px solid #909090 !important;
+}
+main {
+    background-color: white !important;
+}
+svg {
+
+    width:100%;
+}
+.fullWidth {
+   width: 100%;
+   margin-left: auto;
+   margin-right: auto;
+   max-width: initial;
+}
+img {
+    max-height: 50%;
+    max-width: 50%;
+    width: auto;
+    height: auto;
+    position: absolute;
+    top: 0;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+    margin: auto;
+}
+.col-md-3 h3 {
+    position: relative;
+    top: 72%;
+    transform: translateY(-50%);
+    text-align: center;
+}
+
+.msg-group {
+    position: absolute;
+    max-width: 720px;
+    width: 100%;
+    height: 87%;
+    overflow-y: scroll;  /*if the content beyond width and height, use the scrollbar*/
+}
+.chat-input {
+    	position: absolute;
+        height: 13%;
+    	bottom: 0;
+    }
+{% endblock %}
+</style>
+
+
+{% block extracss %}
+    {% load static %}
+
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+<div class="jumbotron jumbotron-fluid" id="jumbo">
+    <div class="container fullWidth">
+    <div class="row fullWidth">
+        <div class="col-md-3 col-sm-2 d-none d-sm-block">
+            <img src="{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.picture.url }}{% else %}{% if game_bgg.match.user_a.picture %}{{ game_bgg.match.user_a.picture.url }}{% endif %}{% endif %}">
+            <h3 id="team_a_info" style="font-size: 1.5rem;">50.00%</h3>
+        </div>
+        <div class="col-md-6 col-sm-8 col-xs-12" id="chart-widget">
+{#            <div class="rounded" id="chart-overlay-div">#}
+{#                <div class="rounded" id="chart-overlay-div-inner">#}
+{#                    <p>No current bets - Please use the form below to make a bet.</p>#}
+{#                    <button class="btn btn-dark">Click here</button>#}
+{#                </div>#}
+{#            </div>#}
+            <div class="widget">
+                <div id="chart" class="chart-container"></div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-2 d-none d-sm-block">
+            <img src="{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.picture.url }}{% else %}{% if game_bgg.match.user_b.picture %}{{ game_bgg.match.user_b.picture.url }}{% endif %}{% endif %}">
+            <h3 id="team_b_info" style="font-size: 1.5rem;">50.00%</h3>
+        </div>
+</div>
+</div>
+</div>
+{% ifequal wallet.admin True  %}{% include 'groups/game_admin_toolbar.html' %}{% endifequal %}
+
+{#<script src="http://d3js.org/d3.v3.min.js"></script>#}
+{#<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>#}
+
+{#airplane#}
+<script src="{% static 'js/d3.js' %}"></script>
+<script src="{% static 'js/underscore.js' %}"></script>
+
+<script src="{% static 'groups/pie.js' %}"></script>
+
+<script>
+{#pie chart stuff#}
+
+// Create bet data for this game
+var dataset = [
+        {% for bet in game_bgg.mbg_bets.all %}
+            {
+            name:'{{ bet.wallet.profile.user }}',
+            amount:{{ bet.amount }},
+            percent: {{ bet.amount|div:total_bet|mul:100 }},
+            team:'{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user }}{% endif %}',
+            colour:'#{{ bet.wallet.profile.colour }}'
+            },
+        {% endfor %}
+];
+
+// Group the bet data by user and team
+var grouped = [];
+
+dataset.forEach(function (a) {
+    if (!this[a.name + a.team]) {
+        this[a.name + a.team] = { name: a.name, amount: '0', percent: '0', team:a.team, colour:a.colour };
+        grouped.push(this[a.name + a.team]);
+    }
+    this[a.name + a.team].amount = (+this[a.name + a.team].amount + +a['amount']);
+    this[a.name + a.team].percent = (+this[a.name + a.team].percent + +a['percent']);
+
+}, Object.create(null));
+
+
+// Create the team data
+var teamdata_a_amount = 0;
+var teamdata_b_amount = 0;
+var teamdata_a_percent = 0;
+var teamdata_b_percent = 0;
+
+// calculate the percentage and amount bet on each team
+for (i in grouped){
+   if (grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}') {
+       teamdata_a_amount += grouped[i].amount;
+       teamdata_a_percent += grouped[i].percent;
+   }
+   else if(grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}'){
+       teamdata_b_amount += grouped[i].amount;
+       teamdata_b_percent += grouped[i].percent;
+   }
+
+};
+
+// construct data for the team pie (outside ring)
+var team_dataset = [{
+            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            amount:teamdata_a_amount,
+            percent: teamdata_a_percent,
+            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
+            },
+            {
+            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            amount:teamdata_b_amount,
+            percent: teamdata_b_percent,
+            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
+            }];
+
+// Create some placeholder data in the event no one bets
+if (grouped === undefined || grouped.length == 0){
+    team_dataset= [
+        {
+            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            amount:0,
+            percent: 50,
+            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
+            },
+            {
+            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            amount:0,
+            percent: 50,
+            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
+            }
+            ];
+};
+
+
+if (teamdata_a_percent != 0){
+    $("#team_a_info").html(teamdata_a_percent.toFixed(2) + "%");
+    $("#team_b_info").html(teamdata_b_percent.toFixed(2) + "%");
+};
+
+var totalamount = {{ total_bet }};
+
+InitialPie(grouped,totalamount,team_dataset);
+
+</script>
+
+
+
+{% endblock %}
+
+{% block content %}
+
+    <h1>{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %} vs {% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %} <small>{{ game_bgg.match.game_date|date:"d-F Y H:i" }}</small></h1>
+
+<div class="row" style="margin-top: 20px">
+        <div class="col-md-4">
+            <form>
+                <div class="form-group">
+                    <label for="teamSelect">Team</label>
+                    <select class="form-control" id="teamSelect" style="width: 95%" required>
+                      <option>{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}</option>
+                      <option>{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}</option>
+                    </select>
+                </div>
+                <div class="input-group mb-3" style="width: 95%">
+                  <div class="input-group-prepend">
+                    <span class="input-group-text">£</span>
+                  </div>
+                  <input type="number" class="form-control" aria-label="Amount (to the nearest pound)" min="0.01" step="0.01" max="10000" placeholder="5.00" id="amountBid" required>
+                  <div class="input-group-append">
+                  </div>
+                </div>
+                <button type="submit" id="update">Submit</button>
+            </form>
+        </div>
+        <div class="col-md-4">
+            <div class="span3"><table class="table table-hover header-fixed">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 15%;">#</th>
+                  <th scope="col" style="width: 40%;">Bet for</th>
+                  <th scope="col" style="width: 45%;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+              {%  for bet in userbets %}
+                <tr id="transparentrow{{ forloop.counter }}">
+                  <td style="width: 15%;font-weight: 700;">{{ forloop.counter }}</td>
+                  <td style="width: 60%;">{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user }}{% endif %}</td>
+                  <td style="width: 25%;">£{{ bet.amount }}</td>
+                </tr>
+
+              {% endfor %}
+              </tbody>
+            </table></div>
+        </div>
+        <div class="col-md-4">
+
+                <div class="msg-group">
+
+
+                </div>
+
+                <div class="input-group chat-input">
+                	<textarea id="input-box" class="form-control" rows="1" placeholder="Say something..."></textarea>
+                    <span class="input-group-btn">
+                        <button class="btn btn-secondary" type="button">send</button>
+                    </span>
+               </div>
+
+{#            <textarea id="chat-log" style="width: 100%; height: 70%"></textarea><br/>#}
+{#            <input id="chat-message-input" type="text" style="width: 100%;"/><br/>#}
+{#            <input id="chat-message-submit" type="button" value="Send"/>#}
+        </div>
+</div>
+<br>
+
+<script>
+
+        class chat_control {
+            constructor() {
+                this.msg_list = $('.msg-group');
+            }
+
+            send_msg(name, msg) {
+
+                dataSocket.send(JSON.stringify({
+                    'chat_message': msg
+                }));
+                this.scroll_to_bottom();
+            }
+
+            receive_msg(name, msg) {
+                this.msg_list.append(this.get_msg_html(name, msg, 'left'));
+                this.scroll_to_bottom();
+            }
+
+            get_msg_html(name, msg, side) {
+                var msg_temple = `
+                    <div class="card">
+                         <div class="card-body">
+                             <h6 class="card-subtitle mb-2 text-muted text-${side}">${name}</h6>
+                             <p class="card-text float-${side}">${msg}</p>
+                         </div>
+                    </div>
+                    `;
+                return msg_temple;
+            }
+
+            scroll_to_bottom() {
+                this.msg_list.scrollTop(this.msg_list[0].scrollHeight);
+            }
+        }
+
+
+        var chat = new chat_control();
+
+        send_button = $('button') // get jquery element from html table name
+        input_box = $('#input-box') // get jquery element from div id
+        // also you could get it by $('.form-control') or $('textarea')
+
+        function handle_msg(msg) {
+            msg = msg.trim()
+            msg = msg.replace(/(?:\r\n|\r|\n)/g, '<br>')
+            return msg
+        }
+
+        function send_msg() {
+            msg = handle_msg(input_box.val());
+            if (msg != '') {
+                chat.send_msg('you', msg);
+                input_box.val('');
+            }
+        }
+
+        function box_key_pressing() {
+            // control + enter was pressed
+            if ((event.keyCode === 10 || event.keyCode === 13) && event.ctrlKey) {
+                send_msg();
+            }
+            // esc was pressed
+            if (event.keyCode === 27) {
+                input_box.blur();
+            }
+        }
+
+        send_button.on('click', send_msg.bind());
+        input_box.on('keyup', box_key_pressing.bind());
+
+{# Websocket stuff#}
+var gameId = {{ game_bgg.id }};
+
+function onOpen (evt) {
+    console.log("connected to websocket!");
+};
+function onMessage (evt) {
+    var data = JSON.parse(evt.data);
+    console.log(data);
+    var message = data['message'];
+
+    if (data['total_bet']){
+        console.log("if statement works");
+        message = JSON.parse(data['message']);
+        var message_grouped =[];
+        console.log(message);
+
+        message.forEach(function (a) {
+        if (!this[a.name + a.team]) {
+            this[a.name + a.team] = { name: a.name, amount: '0', percent: '0', team:a.team, colour:a.colour };
+            message_grouped.push(this[a.name + a.team]);
+        }
+        this[a.name + a.team].amount = (+this[a.name + a.team].amount + +a['amount']);
+        this[a.name + a.team].percent = (+this[a.name + a.team].percent + +a['percent']);
+
+        }, Object.create(null));
+
+        // Create the team data
+        var teamdata_a_amount = 0;
+        var teamdata_b_amount = 0;
+        var teamdata_a_percent = 0;
+        var teamdata_b_percent = 0;
+
+        for (i in message_grouped){
+           if (message_grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}') {
+               teamdata_a_amount += message_grouped[i].amount;
+               teamdata_a_percent += message_grouped[i].percent;
+           }
+           else if(message_grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}'){
+               teamdata_b_amount += message_grouped[i].amount;
+               teamdata_b_percent += message_grouped[i].percent;
+           }
+        };
+
+        var message_team_dataset = [
+                    {
+                    name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+                    amount:teamdata_b_amount,
+                    percent: teamdata_b_percent,
+                    team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+                    colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
+                    },
+                    {
+                    name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+                    amount:teamdata_a_amount,
+                    percent: teamdata_a_percent,
+                    team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+                    colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
+                    }];
+
+
+        console.log(message_grouped);
+        console.log(message_team_dataset);
+
+        var total_bet = Number(data['total_bet']);
+
+        change(message_grouped,total_bet, message_team_dataset);
+    }
+    else {
+
+        var chat_user = data['chat_user'];
+        var user_colour = data['user_colour'];
+        chat.receive_msg(chat_user, message);
+    };
+
+};
+function onClose (evt) {
+    console.log("Closed websocket!");
+};
+
+var dataSocket = new WebSocket(
+'ws://' + window.location.host +
+'/ws/' + gameId + '/');
+
+
+
+
+dataSocket.onopen = function (evt) { onOpen(evt) };
+dataSocket.onmessage = function (evt) { onMessage(evt) };
+dataSocket.onclose = function (evt) { onClose(evt) };
+
+</script>
+<script>
+
+
+
+{#$(".transparentrow").css("background-color",hexToRgbNew(#{{ game.team_a.colour }}));#}
+ // "51";
+
+
+{% for bet in userbets %}
+
+    $("#transparentrow{{ forloop.counter }}").css("background-color", function(){
+        return "rgba(" + "{% if bet.chosen_team %}{{ bet.chosen_team.colour_rgb }}{% else %}{{ bet.chosen_user.colour_rgb }}{% endif %}" +","+"0.35)"
+    });
+
+{% endfor %}
+
+console.log("working");
+$("#update").click(function (e) {
+    var teamInput = document.querySelector('#teamSelect');
+    var chosenTeam = teamInput.value;
+
+    var bidInput = document.querySelector('#amountBid');
+    var amountBid = bidInput.value;
+
+    dataSocket.send(JSON.stringify({
+        'chosenTeam': chosenTeam,
+        'amountBid': amountBid
+    }));
+
+    console.log(chosenTeam);
+    console.log(amountBid);
+});
+
+
+
+    </script>
+{% endblock %}

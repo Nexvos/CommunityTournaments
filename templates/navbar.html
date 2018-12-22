@@ -1,0 +1,53 @@
+{% load static %}
+{% url 'groups:home' as home %}
+
+
+   <!-- Static navbar -->
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" style="z-index:1; padding-bottom: 0.25rem; padding-top: 0.25rem; ">
+      <a class="navbar-brand strokeme" href="#" style="font-size: 100%;">eSports Betting</a>
+      <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav mr-auto">
+                  <li class="nav-item {% ifequal  request.get_full_path home %} active {% endifequal %}">
+                    <a class="nav-link" href="{{ home }}">Home <span class="sr-only">(current)</span></a>
+                  </li>
+                  <li class="nav-item {% ifequal  request.get_full_path betting_index %} active {% endifequal %}">
+                    <a class="nav-link" href="#">Options</a>
+                  </li>
+
+            </ul>
+            <ul class="navbar-nav ml-auto" style="margin-right: 20px;">
+                {% if wallet %}
+                  <li class="nav-link">
+                    <p style="margin-bottom: 0;">Current Bank: £{{ wallet.bank }}</p>
+                  </li>
+                {% endif %}
+                  <li class="nav-link">
+                    <i class="fas fa-envelope" style="font-size: 1.2rem;"></i>
+                  </li>
+                  <li class="nav-link">
+                    <i class="fab fa-facebook-f" style="font-size: 1.2rem;"></i>
+                  </li>
+                  <li class="nav-link">
+                    <i class="fab fa-discord" style="font-size: 1.2rem;"></i>
+                  </li>
+                  <li class="nav-link">
+                    <i class="fab fa-twitter" style="font-size: 1.2rem;"></i>
+                  </li>
+            </ul>
+            <form class="form-inline mt-2 mt-md-0 navbar-nav" method='POST' action='{% url "login" %}'>{% csrf_token %}
+
+                {% if not request.user.is_authenticated and not "/accounts/login" in request.get_full_path %}
+                    <div class='form-group' style="margin-right: 3px;">
+                        <input type='text' class='form-control' name='username' placeholder='Username' />
+                    </div>
+                    <div class='form-group' style="margin-right: 3px;">
+                        <input type='password' class='form-control' name='password' placeholder='Password' />
+                    </div>
+                    <button type='submit' class='btn btn-default'>Login</button>
+                {% else %}
+                    <a class="nav-link" href="{% url 'logout' %}">logout</a>
+                {% endif %}
+
+            </form>
+      </div>
+</nav>

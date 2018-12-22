@@ -1,0 +1,23 @@
+<div class="jumbotron" style="padding-left: 10%; padding-right: 10%; position: relative; background-color: #{{ group.header_background_colour }}; padding-bottom: 25px; padding-top: 20px; border-bottom: 1px #b5b5b5 solid; border-radius: 0;">
+    <div class="container home-wide">
+        <div class="row" style="border-bottom: 2px solid #{{ group.header_text_colour }}; margin-bottom: 15px;">
+            <div class="col-md-12">
+                <p class='display-3 text-align-left' style="margin-bottom: 0; color: #{{ group.header_text_colour }}">{{ group.name }} {{ title_pager }}</p>
+            </div>
+        </div>
+    </div>
+    {% ifnotequal group.name 'PUBLIC' %}
+        <div style="position: absolute; width: 0;height: 0;border-bottom: 32px solid #343a40;border-left: 20px solid transparent;right:80px; bottom: 0px;">
+        </div>
+        <div style="position: absolute; width: 0;height: 0;border-bottom: 30px solid #ffffff;border-left: 19px solid transparent;right:80px; bottom: 0px;">
+        </div>
+        <div style="position: absolute; width: 0;height: 0;border-bottom: 27px solid #f6f6f6;border-left: 17px solid transparent;right:80px; bottom: 0px;">
+        </div>
+
+        <div style="position: absolute; height: 30px;width: 80px;right:0px; bottom: 1px; background-color: #343a40;">
+            <div style="margin-top: 1px; border-top: 2px #ffffff solid; height: 100%; background-color: #f6f6f6;">
+                <p style="margin-bottom: 0; padding: 0.25rem; font-weight: 600;">User Group</p>
+            </div>
+        </div>
+    {% endifnotequal %}
+</div>

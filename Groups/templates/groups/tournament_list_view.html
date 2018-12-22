@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block head_title %}Profile | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    {% load static %}
+
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+{% include 'groups/group_jumbotron.html' with title_pager="Tournament List" %}
+
+{% include 'groups/group_nav.html' %}
+
+{% endblock %}
+
+{% block content %}
+
+  <div id="accordion">
+    <div class="card">
+      <div class="card-header">
+        <a class="card-link" data-toggle="collapse" href="#collapseOne">
+          Upcoming Tournaments
+        </a>
+      </div>
+      <div id="collapseOne" class="collapse {% ifequal activesection 'upcoming' %}show{% endifequal %}" data-parent="#accordion">
+        <div class="card-body">
+          {% if upcoming_tournaments %}
+          {% for tournament in upcoming_tournaments %}
+
+            <a
+                    class="list-group-item list-group-item-action list-group-item-dark"
+                    href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                    style="background-color:#{{ tournament.videogame.colour }};"
+                    onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                    onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+            >
+                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> {% endif %} &nbsp; {{ tournament.name }}
+            </a>
+
+          {% endfor %}
+          {% else %}
+            <p class="card-text"> No upcoming tournaments. </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <a class="collapsed card-link" data-toggle="collapse" href="#collapseTwo">
+        Ongoing tournaments
+      </a>
+      </div>
+      <div id="collapseTwo" class="collapse {% ifequal activesection 'ongoing' %}show{% endifequal %}" data-parent="#accordion">
+        <div class="card-body">
+            {% for tournament in ongoing_tournaments %}
+
+            <a
+                    class="list-group-item list-group-item-action list-group-item-dark"
+                    href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                    style="background-color:#{{ tournament.videogame.colour }};"
+                    onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                    onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+            >
+                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
+            </a>
+
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <a class="collapsed card-link" data-toggle="collapse" href="#collapseThree">
+          Completed tournaments
+        </a>
+      </div>
+      <div id="collapseThree" class="collapse {% ifequal activesection 'completed' %}show{% endifequal %}" data-parent="#accordion">
+        <div class="card-body">
+            {% for tournament in completed_tournaments %}
+
+            <a
+                    class="list-group-item list-group-item-action list-group-item-dark"
+                    href="{% url 'groups:tournament_view' group_id=group.id tournament_id=tournament.id %}"
+                    style="background-color:#{{ tournament.videogame.colour }};"
+                    onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
+                    onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
+            >
+                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
+            </a>
+
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+{##}
+{#<div class="list-group">#}
+{#{% for profile in model %}#}
+{#    <a href="{% url 'profiles:profile-public' profile.username %}" class="list-group-item list-group-item-action">#}
+{#        {{ profile.username }}#}
+{#    </a>#}
+{#{% endfor %}#}
+{#</div>#}
+
+{% endblock %}
