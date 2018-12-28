@@ -36,7 +36,7 @@
             </ul>
             <form class="form-inline mt-2 mt-md-0 navbar-nav" method='POST' action='{% url "login" %}'>{% csrf_token %}
 
-                {% if not request.user.is_authenticated and not "/accounts/login" in request.get_full_path %}
+                {% if not request.user.is_authenticated %}
                     <div class='form-group' style="margin-right: 3px;">
                         <input type='text' class='form-control' name='username' placeholder='Username' />
                     </div>

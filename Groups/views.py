@@ -20,7 +20,11 @@ User = get_user_model()
 # Create your views here.
 
 def groupsHome(request):
+    if not request.user.is_authenticated:
+        return redirect('profiles:landingPage')
+        print("This works a")
     user = get_object_or_404(User, username=request.user)
+
     wallets = user.profile.profiles_wallet.all()
     admin_wallets = wallets.filter(Q(admin=True))
     invites = wallets.filter(
