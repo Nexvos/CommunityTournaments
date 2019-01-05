@@ -75,7 +75,7 @@ class Match(models.Model):
     start_datetime = models.DateTimeField('Game start datetime')
     estimated_duration = models.DurationField(default=timedelta(minutes=2))
 
-    twitch_url =  models.URLField(max_length=200, unique=False, blank=True, null=True)
+    twitch_url = models.URLField(max_length=200, unique=False, blank=True, null=True)
 
     a_winner = "A is the winner"
     b_winner = "B is the winner"

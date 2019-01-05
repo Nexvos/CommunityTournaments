@@ -19,10 +19,10 @@ from django.http import JsonResponse
 User = get_user_model()
 # Create your views here.
 
+
 def groupsHome(request):
     if not request.user.is_authenticated:
         return redirect('profiles:landingPage')
-        print("This works a")
     user = get_object_or_404(User, username=request.user)
 
     wallets = user.profile.profiles_wallet.all()
@@ -30,18 +30,21 @@ def groupsHome(request):
     invites = wallets.filter(
         Q(status=Wallet.sent)
     )
-    print("ys")
-    print(admin_wallets)
     form = AcceptInviteForm(request.POST or None)
     if request.method == "POST":
-        print(request.POST)
         if form.is_valid():
-            print(request.POST)
             wallet_id = form.cleaned_data['wallet_id']
             accept_invite = form.cleaned_data['accept_invite']
-            wallet = get_object_or_404(Wallet,id=wallet_id)
+            wallet = get_object_or_404(Wallet, id=wallet_id)
+
+            # Ensure the wallet in question actually belongs to the requesting user
             if wallet.profile == user.profile:
+
+                # Ensure that the wallet is an active invite
                 if wallet.status == wallet.sent:
+
+                    # Check that the post request is accepting or declining the invite,
+                    # then change the status accordingly
                     if accept_invite:
                         wallet.status = wallet.active
                     else:
@@ -52,8 +55,6 @@ def groupsHome(request):
             else:
                 form.add_error(None, "You are not the owner of this invite.")
 
-        else:
-            print("form not valid")
     context = {
         "wallets": wallets,
         "admin_wallets": admin_wallets,
@@ -117,10 +118,11 @@ def groupSearch(request):
 
 def createGroup(request):
     form = CreateGroupForm()
+
     if request.method == "POST":
 
         print(request.POST)
-        name = request.POST['name']
+        group_name = request.POST['group_name']
         if 'invite_only' in request.POST:
             invite_only = request.POST['invite_only']
         else:
@@ -131,36 +133,35 @@ def createGroup(request):
             members_can_invite = False
         header_background_colour = request.POST['header_background_colour']
         header_text_colour = request.POST['header_text_colour']
-        tournaments = ""
-        if 'tournaments' in request.POST:
-            for t in request.POST.getlist("tournaments"):
-                tournaments += (t + ",")
+        # tournaments = ""
+        # if 'tournaments' in request.POST:
+        #     for t in request.POST.getlist("tournaments"):
+        #         tournaments += (t + ",")
         daily_payout = request.POST["daily_payout"]
 
         form_dict = {
-            "name": name,
+            "group_name": group_name,
             "invite_only": invite_only,
             "members_can_invite": members_can_invite,
             "header_background_colour": header_background_colour,
             "header_text_colour": header_text_colour,
-            "tournaments": tournaments,
+            # "tournaments": tournaments,
             "daily_payout": daily_payout
         }
         form = CreateGroupForm(form_dict)
         # check whether it's valid:
         if form.is_valid():
-            print("valid")
             user = get_object_or_404(User, username=request.user)
-            name = form.cleaned_data['name']
+            group_name = form.cleaned_data['group_name']
             invite_only = form.cleaned_data['invite_only']
             members_can_invite = form.cleaned_data['members_can_invite']
             header_background_colour = form.cleaned_data['header_background_colour']
             header_text_colour = form.cleaned_data['header_text_colour']
-            tournaments = form.cleaned_data['tournaments']
+            # tournaments = form.cleaned_data['tournaments']
             daily_payout = form.cleaned_data['daily_payout']
 
             new_group = CommunityGroup()
-            new_group.name = name
+            new_group.name = group_name
             new_group.private = invite_only
             new_group.members_can_inv = members_can_invite
             new_group.header_background_colour = header_background_colour
@@ -176,21 +177,21 @@ def createGroup(request):
             user_wallet.admin = True
             user_wallet.save()
 
-            tournament_list = tournaments.split(",")
-            tournament_list_int = []
-            tournament_objs = []
-            print(tournament_list)
-            for t in tournament_list:
-                try:
-                    t = int(t)
-                    tournament_list_int.append(t)
-                except:
-                    pass
-            print(tournament_list_int)
-            for t in tournament_list_int:
-                if isinstance(t, int):
-                    tournament_to_add = get_object_or_404(Tournament, tournament_id=t)
-                    tournament_to_add.groups.add(new_group)
+            # tournament_list = tournaments.split(",")
+            # tournament_list_int = []
+            # tournament_objs = []
+            # print(tournament_list)
+            # for t in tournament_list:
+            #     try:
+            #         t = int(t)
+            #         tournament_list_int.append(t)
+            #     except:
+            #         pass
+            # print(tournament_list_int)
+            # for t in tournament_list_int:
+            #     if isinstance(t, int):
+            #         tournament_to_add = get_object_or_404(Tournament, tournament_id=t)
+            #         tournament_to_add.groups.add(new_group)
 
             return redirect('groups:groupPage', group_id=new_group.id)
 
@@ -458,20 +459,20 @@ def adminPageOptions(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
-def adminPageTournaments(request, group_id):
-    user = get_object_or_404(User, username=request.user)
-    group = get_object_or_404(CommunityGroup, id=group_id)
-
-    try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
-    except Wallet.DoesNotExist:
-        raise Http404('You are not a member of this group.')
-
-    context = {
-        "group": group,
-        'wallet': wallet
-    }
-    return render(request, 'groups/admin.html', context)
+# def adminPageTournaments(request, group_id):
+#     user = get_object_or_404(User, username=request.user)
+#     group = get_object_or_404(CommunityGroup, id=group_id)
+#
+#     try:
+#         wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+#     except Wallet.DoesNotExist:
+#         raise Http404('You are not a member of this group.')
+#
+#     context = {
+#         "group": group,
+#         'wallet': wallet
+#     }
+#     return render(request, 'groups/admin.html', context)
 
 def adminPageAddTournament(request, group_id):
     form = CreateTournamentForm(request.POST or None)
@@ -624,6 +625,8 @@ def tournament_view(request, tournament_id, group_id):
         Q(group__id=group_id),
         Q(match__tournament__id=tournament_id)
     ).order_by('match__start_datetime')
+
+    # TODO: Test that groups can't access tournaments they're not a part of
 
     context = {
         "group": group,

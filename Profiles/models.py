@@ -72,8 +72,8 @@ class Wallet(models.Model):
     declined_blocked = "declined_blocked"
 
     available_statuses = (
-        (sent, "Active"),
-        (declined, "Deactivated"),
+        (sent, "Sent"),
+        (declined, "Declined"),
         (declined_blocked, "Declined and Blocked"),
         (active, "Active"),
         (deactivated, "Deactivated"),
@@ -152,3 +152,4 @@ def update_number_of_community_users(sender, instance, created, **kwargs):
         number_of_users = len(community_group.groups_profile.all())
         community_group.total_number_users = number_of_users
         community_group.save()
+

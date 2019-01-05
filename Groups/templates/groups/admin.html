@@ -23,7 +23,6 @@
     {% url 'groups:adminPageEditGames' group_id=group.id as admin_edit_game_page %}
     {% url 'groups:adminPageAddTournament' group_id=group.id as admin_add_tournament_page %}
     {% url 'groups:adminPageEditTournament' group_id=group.id as admin_edit_tournament_page %}
-    {% url 'groups:adminPageTournaments' group_id=group.id as admin_tournament_page %}
     {% url 'groups:adminPageMembers' group_id=group.id as admin_member_page %}
 
 
@@ -32,9 +31,6 @@
         <div class="nav flex-column nav-pills" id="v-pills-tab" role="tablist" aria-orientation="vertical">
           <a class="nav-link {% ifequal request.path admin_options_page %} active {% endifequal %}" href="{{ admin_options_page }}">
               General Options
-          </a>
-          <a class="nav-link {% ifequal request.path admin_tournament_page %} active {% endifequal %}" href="{{ admin_tournament_page }}">
-              Public Tournaments
           </a>
           <a class="nav-link {% ifequal request.path admin_add_tournament_page %} active {% endifequal %}" href="{{ admin_add_tournament_page }}">
               Add Custom Tournament
@@ -58,10 +54,6 @@
 
       {% ifequal request.path admin_options_page %}
         {% include 'groups/group_admin/admin_general_options.html' %}
-      {% endifequal %}
-
-      {% ifequal request.path admin_tournament_page %}
-        {% include 'groups/group_admin/admin_public_tournaments.html' %}
       {% endifequal %}
 
       {% ifequal request.path admin_add_tournament_page %}

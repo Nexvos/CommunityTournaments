@@ -3,7 +3,7 @@ from decimal import Decimal
 from .models import CommunityGroup
 
 class CreateGroupForm(forms.Form):
-    community_name = forms.CharField(max_length=120)
+    group_name = forms.CharField(max_length=120)
     invite_only = forms.BooleanField(required=False)
     members_can_invite = forms.BooleanField(required=False)
     header_background_colour = forms.CharField(max_length=7)
@@ -13,12 +13,12 @@ class CreateGroupForm(forms.Form):
 
     def clean(self):
         cd = self.cleaned_data
-        name = cd.get('community_name').lower()
+        name = cd.get('group_name').lower()
         if "public" in name:
-            self.add_error('community_name', "You cannot have the word 'public' in your community's name !")
+            self.add_error('group_name', "You cannot have the word 'public' in your community's name !")
         for t in CommunityGroup.objects.all():
             if name == t.name.lower():
-                self.add_error('community_name', "The community name must be unique !")
+                self.add_error('group_name', "The community name must be unique !")
         return cd
 
 class UpdateGroupOptionsForm(forms.Form):

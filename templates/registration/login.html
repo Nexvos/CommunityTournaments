@@ -2,15 +2,19 @@
 {% load i18n %}
 
 
-
 {% block content %}
 <div class='row'>
-<div class='col-sm-6 col-sm-offset-3'>
+<div class='col-sm-6 offset-sm-3'>
 <h1>Login</h1>
+<br>
 <form method="post">
   {% csrf_token %}
-  {{ form }}
-    <br>
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='text' class='form-control' name='username' placeholder='Username' />
+    </div>
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='password' class='form-control' name='password' placeholder='Password' />
+    </div>
   <input class='btn btn-block btn-primary' type="submit" style="margin-top: 5px;" value="{% trans 'Submit' %}" />
   <input type="hidden" name="next" value="{{ next }}" />
 </form>
@@ -19,7 +23,7 @@
 </div>
 <hr/>
 <div class='row'>
-<div class='col-sm-6 col-sm-offset-3 text-align-center'>
+<div class='col-sm-6 offset-sm-3 text-align-center'>
 <p>{% trans "Forgot password" %}? <a href="">{% trans "Reset it" %}</a>!</p>
 <p>{% trans "Not member" %}? <a href="">{% trans "Register" %}</a>!</p>
 </div>
