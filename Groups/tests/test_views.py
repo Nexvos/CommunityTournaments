@@ -4,18 +4,19 @@ from django.contrib.auth import get_user_model
 from django.contrib import auth
 from django.urls import reverse
 from Groups.models import CommunityGroup
-from Games.models import Tournament, Match
+from Games.models import Tournament, Match, Videogame
 from Profiles.models import Wallet
 from django.utils import timezone
+from datetime import timedelta
 User = get_user_model()
 
 
-# TODO: test registered users get directed to home page
-# TODO: Test unregistered users can't access any page apart from the landing page or accounts pages
 # TODO: test the context of group based views always pass the correct group etc
 
 # Create your tests here.
 class UrlTests(TestCase):
+    # Tests to confirm that urls are wired up to the correct address
+
     def setUp(self):
         # Every test needs a client.
         self.client = Client()
@@ -93,7 +94,11 @@ class UrlTests(TestCase):
         self.assertEqual(url, '/1/completed-games/')
 
 
-class HomepageRedirectTests(TestCase):
+class RedirectTests(TestCase):
+    # If a user isn't signed-in then they should be redirected from the base url "/" to the landing/ join page
+    # Test 1: a registered user tries to access the home url "/" and is NOT redirected
+    # Test 2: an unregistered user tries to access the home url and IS redirected to the landing/ join page
+
     def setUp(self):
         # Every test needs a client.
         self.client = Client()
@@ -103,7 +108,7 @@ class HomepageRedirectTests(TestCase):
         user.set_password('12345')
         user.save()
 
-    def test_homepage_with_login(self):
+    def test_1_homepage_with_login(self):
         # Log user in
         self.client.login(username='testuser', password='12345')
 
@@ -119,13 +124,14 @@ class HomepageRedirectTests(TestCase):
         last_path = response.request['PATH_INFO']
         self.assertEqual(last_path, address)
 
-    def test_homepage_redirect_without_login(self):
+    def test_2_homepage_redirect_without_login(self):
         # Issue a GET request.
         address = reverse('groups:home')
         response = self.client.get(address, follow=True)
 
         # Check that the response is 302 OK.
         self.assertRedirects(response, '/join/', status_code=302, target_status_code=200)
+
 
 class HomepagePostTests(TestCase):
 
@@ -327,6 +333,12 @@ class HomepagePostTests(TestCase):
 
 
 class CreateGroupTests(TestCase):
+    # Tests for the create group view
+    # Test 1: Check that a valid post request creates the correct group
+    # Test 2: Check that a valid post request with different bool values works
+    # Test 3: Check that a valid post request with no bool values works (should add them as false)
+    # Test 4: Test that the view handles an invalid form correctly
+
     def setUp(self):
         # Every test needs a client.
         self.client = Client()
@@ -339,7 +351,7 @@ class CreateGroupTests(TestCase):
         # Log user in
         self.client.login(username='testuser', password='12345')
 
-    def test_create_group_form_pass_true(self):
+    def test_1_create_group_form_pass_true(self):
         address = reverse('groups:createGroup')
 
         group_name = "test_group_1"
@@ -372,7 +384,7 @@ class CreateGroupTests(TestCase):
         self.assertEqual(group_object.header_text_colour, header_text_colour)
         self.assertEqual(group_object.daily_payout, daily_payout)
 
-    def test_create_group_form_pass_false(self):
+    def test_2_create_group_form_pass_false(self):
         address = reverse('groups:createGroup')
 
         group_name = "test_group_1"
@@ -405,8 +417,7 @@ class CreateGroupTests(TestCase):
         self.assertEqual(group_object.header_text_colour, header_text_colour)
         self.assertEqual(group_object.daily_payout, daily_payout)
 
-
-    def test_create_group_form_pass_missing(self):
+    def test_3_create_group_form_pass_missing(self):
         address = reverse('groups:createGroup')
 
         group_name = "test_group_1"
@@ -437,8 +448,7 @@ class CreateGroupTests(TestCase):
         self.assertEqual(group_object.header_text_colour, header_text_colour)
         self.assertEqual(group_object.daily_payout, daily_payout)
 
-
-    def test_create_group_form_fail(self):
+    def test_4_create_group_form_fail(self):
         address = reverse('groups:createGroup')
 
         group_name = "test_group_2"
@@ -465,3 +475,616 @@ class CreateGroupTests(TestCase):
         self.assertEqual(last_path, address)
 
 
+class GroupSearchTests(TestCase):
+    # Test 1: Check that the user submitting a valid form CAN join a non-private group (wallet marked as
+    # "active")
+    # Test 2: Check that the user submitting a valid form to a private (invite only) group sends a request
+    # (wallet marked as "requesting_invite")
+    # Test 3: Check that the user submitting a valid form CANNOT join a non-private group they are already a member of
+    # (status unchanged)
+    # Test 4: Check that the user submitting a valid form CANNOT join a private (invite only) group they are already a
+    # member of (status unchanged)
+    # Test 5: Check that a user is redirected to the login page when not logged in
+    # Test 6: If a user has been blocked by a private group (with the status "declined_blocked") then a valid form will
+    # provide an error message and leave the wallet unchanged
+    # Test 7: If a user has been blocked by a non-private group (with the status "declined_blocked") then a valid form
+    # will provide an error message and leave the wallet unchanged
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create user
+        self.user = User.objects.create(username='testuser')
+        self.user.set_password('12345')
+        self.user.save()
+
+        # Log user in
+        self.client.login(username='testuser', password='12345')
+
+        # create private group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object_private = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # create non-private group
+        group_name = "test_group_2"
+        invite_only = False
+        members_can_invite = False
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object_not_private = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+    def test_1_join_not_private_group(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        group_id = self.group_object_not_private.id
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # Get the newly created wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_not_private
+        )
+
+        # check the wallet was created correct status
+        self.assertEqual(wallet.status, Wallet.active)
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_2_request_inv_from_private_group(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        group_id = self.group_object_private.id
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # Get the newly created wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_private
+        )
+
+        # check the wallet was created correct status
+        self.assertEqual(wallet.status, Wallet.requesting_invite)
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_3_join_group_existing_member(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        # Set wallet attributes
+        group_id = self.group_object_not_private.id
+        status = Wallet.active
+
+        # Create existing relationship with group
+        wallet = Wallet.objects.create(
+            profile=self.user.profile,
+            group=self.group_object_not_private,
+            status=status
+        )
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # Get the newly created wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_not_private
+        )
+
+        # check the wallet maintains correct status
+        self.assertEqual(wallet.status, Wallet.active)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You are already a member of this group.")
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_4_request_inv_existing_member(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        # Set wallet attributes
+        group_id = self.group_object_private.id
+        status = Wallet.active
+
+        # Create existing relationship with group
+        wallet = Wallet.objects.create(
+            profile=self.user.profile,
+            group=self.group_object_private,
+            status=status
+        )
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # Get the newly created wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_private
+        )
+
+        # check the wallet maintains correct status
+        self.assertEqual(wallet.status, Wallet.active)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You are already a member of this group.")
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_5_redirect_if_not_logged(self):
+        # Logout
+        self.client.logout()
+
+        # Assert that the user is not logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        # Set group_id for post request
+        group_id = self.group_object_private.id
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_6_deny_blocked_user_private(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        # Set wallet attributes
+        group_id = self.group_object_private.id
+        status = Wallet.declined_blocked
+
+        # Create existing relationship with group
+        wallet = Wallet.objects.create(
+            profile=self.user.profile,
+            group=self.group_object_private,
+            status=status
+        )
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # (Re-)get the wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_private
+        )
+
+        # check the wallet maintains correct status
+        self.assertEqual(wallet.status, Wallet.declined_blocked)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "This group has blocked you. Please contact the group admin.")
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_7_deny_blocked_user_not_private(self):
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupSearch')
+
+        # Set wallet attributes
+        group_id = self.group_object_not_private.id
+        status = Wallet.declined_blocked
+
+        # Create existing relationship with group
+        wallet = Wallet.objects.create(
+            profile=self.user.profile,
+            group=self.group_object_not_private,
+            status=status
+        )
+
+        # Send the post request
+        response = self.client.post(address, {
+            "group_id": group_id
+        })
+
+        # (Re-)get the wallet
+        wallet = Wallet.objects.get(
+            profile=self.user.profile,
+            group=self.group_object_not_private
+        )
+
+        # check the wallet maintains correct status
+        self.assertEqual(wallet.status, Wallet.declined_blocked)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "This group has blocked you. Please contact the group admin.")
+
+        # Check that the response is 302 OK.
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+
+class GroupPageTests(TestCase):
+    # There are 3 groups of tournaments passed through context variables:
+    #   1: "upcoming_tournaments" - start date is in the future, but not more than 3 months into the future
+    #   2: "ongoing_tournaments1" and "ongoing_tournaments2" - Start date is in the past and the end date is in the
+    #   future - Also split into two other variables splitting the list in half
+    #   3: "completed_tournaments" - End date is in the past, but not more than 3 months ago
+    # ---
+    # The latest 12 matches are passed into the context variable "latest_game_list" - These are ordered by the start
+    # date of the match and must not be any status given to "completed" games
+    # ---
+    # When a url variable "q" is given, then the tournaments and matches must be filtered to only contain tournaments
+    # and matches for that videogame
+    # ---
+    # Only members of the group should be able to access this group - non-members should be presented with a 404
+
+    # Test 1: Check that a user is redirected to the login page when not logged in
+    # Test 2: Check that a user that isn't a member of the group is delivered a 404
+    # Test 3: Check that a user that has a wallet with the associated group that is not active is delivered a 404
+    # Test 4: Check that a user with a wallet associated with the group, which is active is delivered the correct page
+    # Test 5: Check that "upcoming_tournaments" contains tournaments in the correct range and not outside
+    # Test 6: Check that the url variable q correctly filters "upcoming_tournaments"
+    # Test 7: Check that "ongoing_tournaments1" and "ongoing_tournaments2" contains tournaments in the correct range
+    # and not outside - Also that "ongoing_tournaments1" + "ongoing_tournaments2" contain all ongoing tournaments
+    # Test 8: Check that the url variable q correctly filters "ongoing_tournaments1" and "ongoing_tournaments2"
+    # Test 9: Check that "completed_tournaments" contains tournaments in the correct range and not outside
+    # Test 10: Check that the url variable q correctly filters "completed_tournaments"
+    # Test 11: Check that "latest_game_list" Will provide only the most recent 12 games in the correct order
+    # Test 12: Check that the url variable q correctly filters "latest_game_list"
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create user
+        self.user = User.objects.create(username='testuser')
+        self.user.set_password('12345')
+        self.user.save()
+
+        # Log user in
+        self.client.login(username='testuser', password='12345')
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet = Wallet.objects.create(
+            profile=self.user.profile,
+            group=self.group_object,
+            status=Wallet.active
+        )
+
+    def test_1_redirect_when_not_logged(self):
+        # Log the user out
+        self.client.logout()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_2_404_when_not_associated(self):
+        # Delete existing wallet
+        self.wallet.delete()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_3_404_when_not_active(self):
+        # Change wallet status to deactivated
+        self.wallet.status = Wallet.deactivated
+        self.wallet.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_200_when_active(self):
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 200
+        self.assertEqual(response.status_code, 200)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_5_upcoming_tournaments(self):
+        # "upcoming_tournaments" - start date must be in the future, but not more than 3 months into the future
+        # --- ---
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Create tournaments
+        # Tournament 1: 1 hour in the future - Should be in the variable
+        tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(hours=1)
+        )
+        # Tournament 2: 1 hour in the past - Shouldn't be in the variable
+        tournament_2 = Tournament.objects.create(
+            name="tournament_2",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() - timedelta(hours=1)
+        )
+        # Tournament 3: 89 days in the future - Should be in the variable
+        tournament_3 = Tournament.objects.create(
+            name="tournament_3",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(days=89)
+        )
+        # Tournament 4: 91 days in the future - Shouldn't be in the variable
+        tournament_4 = Tournament.objects.create(
+            name="tournament_4",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(days=91)
+        )
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        upcoming_tournaments = response.context['upcoming_tournaments']
+
+        # Check that tournament_1 and tournament_3 are in upcoming_tournaments
+        self.assertIn(tournament_1, upcoming_tournaments)
+        self.assertIn(tournament_3, upcoming_tournaments)
+
+        # Check that tournament_2 and tournament_4 are not in upcoming_tournaments
+        self.assertNotIn(tournament_2, upcoming_tournaments)
+        self.assertNotIn(tournament_4, upcoming_tournaments)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_6_filter_upcoming_tournaments(self):
+        # "upcoming_tournaments" - start date must be in the future, but not more than 3 months into the future
+        # --- ---
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Create a videogame to test
+        videogame_name = "SC2"
+        videogame_1 = Videogame.objects.create(
+            name=videogame_name
+        )
+        videogame_2 = Videogame.objects.create(
+            name="not_SC2"
+        )
+
+        # Create tournaments
+        # Tournament 1: 1 hour in the future - Should be in the variable
+        tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(hours=1),
+            videogame=videogame_1
+        )
+        tournament_1_filter = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(hours=1)
+        )
+
+        # Tournament 3: 89 days in the future - Should be in the variable
+        tournament_3 = Tournament.objects.create(
+            name="tournament_3",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(days=89),
+            videogame=videogame_1
+        )
+        tournament_3_filter = Tournament.objects.create(
+            name="tournament_3",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(days=89),
+            videogame= videogame_2
+        )
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        address = address + "?q=" + videogame_name
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        upcoming_tournaments = response.context['upcoming_tournaments']
+
+        # Check that tournament_1 and tournament_3 are in upcoming_tournaments
+        self.assertIn(tournament_1, upcoming_tournaments)
+        self.assertIn(tournament_3, upcoming_tournaments)
+
+        # Check that tournament_1_filter and tournament_3_filter are not in upcoming_tournaments
+        self.assertNotIn(tournament_1_filter, upcoming_tournaments)
+        self.assertNotIn(tournament_3_filter, upcoming_tournaments)
+
+
+    def test_7_ongoing_tournaments(self):
+        # "ongoing_tournaments1" + "ongoing_tournaments2" - start date must be in the past and end dates must be in
+        # the future
+        # --- ---
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Create tournaments
+        # Tournament 1: start date one hour in the past and end date one hour in the future - Should be in the variable
+        tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() - timedelta(hours=1),
+            end_datetime=timezone.now() + timedelta(hours=1)
+        )
+        # Tournament 2: start date two hours in the past and end date one hour in the past - Shouldn't be in the
+        # variable
+        tournament_2 = Tournament.objects.create(
+            name="tournament_2",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() - timedelta(hours=2),
+            end_datetime=timezone.now() - timedelta(hours=1)
+        )
+        # Tournament 3: start date one hour in the future and end date two hours in the future - Shouldn't be in the
+        # variable
+        tournament_3 = Tournament.objects.create(
+            name="tournament_3",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timedelta(hours=1),
+            end_datetime=timezone.now() + timedelta(hours=2)
+        )
+
+        address = reverse('groups:groupPage', kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        ongoing_tournaments1 = response.context['ongoing_tournaments1']
+        ongoing_tournaments2 = response.context['ongoing_tournaments2']
+        print("ongoing_tournaments1: ", ongoing_tournaments1)
+        print("ongoing_tournaments2: ", ongoing_tournaments2)
+        ongoing_tournaments = ongoing_tournaments1 + ongoing_tournaments2
+        print("ongoing_tournaments", ongoing_tournaments)
+        # Check that tournament_1 and tournament_3 are in upcoming_tournaments
+        self.assertIn(tournament_1, ongoing_tournaments)
+
+        # Check that tournament_2 and tournament_4 are not in upcoming_tournaments
+        self.assertNotIn(tournament_2, ongoing_tournaments)
+        self.assertNotIn(tournament_3, ongoing_tournaments)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)

@@ -14,16 +14,17 @@ from datetime import timedelta
 from django.template import loader
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
-
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse_lazy
 
 User = get_user_model()
 # Create your views here.
+landing_page_url = reverse_lazy('profiles:landingPage')
 
 
+@login_required(login_url=landing_page_url, redirect_field_name="")
 def groupsHome(request):
-    if not request.user.is_authenticated:
-        return redirect('profiles:landingPage')
-    user = get_object_or_404(User, username=request.user)
+    user = request.user
 
     wallets = user.profile.profiles_wallet.all()
     admin_wallets = wallets.filter(Q(admin=True))
@@ -47,11 +48,14 @@ def groupsHome(request):
                     # then change the status accordingly
                     if accept_invite:
                         wallet.status = wallet.active
+
                     else:
                         wallet.status = wallet.declined
+
                     wallet.save()
                 else:
                     form.add_error(None, "This invite is not active.")
+
             else:
                 form.add_error(None, "You are not the owner of this invite.")
 
@@ -63,14 +67,15 @@ def groupsHome(request):
     }
     return render(request, 'groups/home.html', context)
 
+
+@login_required(redirect_field_name="")
 def groupSearch(request):
-    user = get_object_or_404(User, username=request.user)
+    user = request.user
 
     user_groups = user.profile.groups.all()
 
     groups = CommunityGroup.objects.all().exclude(id__in=user_groups).order_by('private')
     wallets = user.profile.profiles_wallet.all().order_by('group__private')
-    print("ys")
     form = JoinGroupForm(request.POST or None)
     if request.method == "POST":
         if form.is_valid():
@@ -85,6 +90,7 @@ def groupSearch(request):
                     "status": Wallet.deactivated
                 }
             )
+
             if wallet_created:
                 if group.private:
                     # ask for invite
@@ -96,6 +102,8 @@ def groupSearch(request):
             else:
                 if wallet.status == wallet.active:
                     form.add_error(None, "You are already a member of this group.")
+                elif wallet.status == wallet.declined_blocked:
+                    form.add_error(None, "This group has blocked you. Please contact the group admin.")
                 else:
                     if group.private:
                         # ask for invite
@@ -108,7 +116,7 @@ def groupSearch(request):
                         wallet.status = wallet.active
                         messages.success(request, 'Successfully joined group.')
             wallet.save()
-    print(user_groups)
+
     context = {
         "model": groups,
         "form": form,
@@ -116,6 +124,8 @@ def groupSearch(request):
     }
     return render(request, 'groups/group_search.html', context)
 
+
+@login_required(redirect_field_name="")
 def createGroup(request):
     form = CreateGroupForm()
 
@@ -133,10 +143,6 @@ def createGroup(request):
             members_can_invite = False
         header_background_colour = request.POST['header_background_colour']
         header_text_colour = request.POST['header_text_colour']
-        # tournaments = ""
-        # if 'tournaments' in request.POST:
-        #     for t in request.POST.getlist("tournaments"):
-        #         tournaments += (t + ",")
         daily_payout = request.POST["daily_payout"]
 
         form_dict = {
@@ -145,10 +151,10 @@ def createGroup(request):
             "members_can_invite": members_can_invite,
             "header_background_colour": header_background_colour,
             "header_text_colour": header_text_colour,
-            # "tournaments": tournaments,
             "daily_payout": daily_payout
         }
         form = CreateGroupForm(form_dict)
+
         # check whether it's valid:
         if form.is_valid():
             user = get_object_or_404(User, username=request.user)
@@ -157,7 +163,6 @@ def createGroup(request):
             members_can_invite = form.cleaned_data['members_can_invite']
             header_background_colour = form.cleaned_data['header_background_colour']
             header_text_colour = form.cleaned_data['header_text_colour']
-            # tournaments = form.cleaned_data['tournaments']
             daily_payout = form.cleaned_data['daily_payout']
 
             new_group = CommunityGroup()
@@ -177,22 +182,6 @@ def createGroup(request):
             user_wallet.admin = True
             user_wallet.save()
 
-            # tournament_list = tournaments.split(",")
-            # tournament_list_int = []
-            # tournament_objs = []
-            # print(tournament_list)
-            # for t in tournament_list:
-            #     try:
-            #         t = int(t)
-            #         tournament_list_int.append(t)
-            #     except:
-            #         pass
-            # print(tournament_list_int)
-            # for t in tournament_list_int:
-            #     if isinstance(t, int):
-            #         tournament_to_add = get_object_or_404(Tournament, tournament_id=t)
-            #         tournament_to_add.groups.add(new_group)
-
             return redirect('groups:groupPage', group_id=new_group.id)
 
     context = {
@@ -200,19 +189,28 @@ def createGroup(request):
     }
     return render(request, 'groups/create_group.html', context)
 
-def group_page(request, group_id):
 
-    user = get_object_or_404(User, username=request.user)
+@login_required(redirect_field_name="")
+def group_page(request, group_id):
+    # Set user to request.user
+    user = request.user
+
+    # Fetch the group object
     group = get_object_or_404(CommunityGroup, id=group_id)
+
+    # Attempt to get the ACTIVE wallet for this user for this group
+    # If this fails then the user is not a member of the group and should be presented with a 404
     try:
         wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    latest_game_list = MatchBettingGroup.objects.filter(Q(group__id=group_id),
-                                                       Q(status=MatchBettingGroup.active)
-                                                       )
-    tournament_list = group.group_tournaments.all()
+    latest_game_list = MatchBettingGroup.objects.filter(
+        Q(group__id=group_id),
+        Q(status=MatchBettingGroup.active)
+    )
+
+    tournament_list = group.owning_group_tournaments.all()
 
     # Nd to create separate qurysets for different tournament statuses and only display active tournaments
     # & tournaments not yet begun
@@ -228,6 +226,7 @@ def group_page(request, group_id):
             ~Q(match__status=Match.finished_paid),
             Q(match__tournament__videogame__name__iexact=query)
         ).order_by('match__start_datetime')[:12]
+
         tournament_list = tournament_list.filter(videogame__name__iexact=query)
 
     else:
@@ -270,6 +269,8 @@ def group_page(request, group_id):
     }
     return render(request, 'groups/group_page.html', context)
 
+
+@login_required(redirect_field_name="")
 def lazy_load_games(request, group_id):
   page = request.POST.get('page')[:12]
   print(page)
@@ -313,6 +314,8 @@ def lazy_load_games(request, group_id):
   print(output_data)
   return JsonResponse(output_data)
 
+
+@login_required(redirect_field_name="")
 def tournament_list_view(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -321,7 +324,7 @@ def tournament_list_view(request, group_id):
         wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
-    tournament_list = group.group_tournaments.all()
+    tournament_list = group.owning_group_tournaments.all()
     activesection = request.GET.get('activesection')
     query = request.GET.get('q')
     current_datetime = datetime.now()
@@ -357,6 +360,8 @@ def tournament_list_view(request, group_id):
     }
     return render(request, "groups/tournament_list_view.html", context)
 
+
+@login_required(redirect_field_name="")
 def invitePage(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -427,6 +432,8 @@ def invitePage(request, group_id):
     }
     return render(request, 'groups/invite.html', context)
 
+
+@login_required(redirect_field_name="")
 def adminPageOptions(request, group_id):
     form = UpdateGroupOptionsForm(request.POST or None)
     user = get_object_or_404(User, username=request.user)
@@ -474,6 +481,8 @@ def adminPageOptions(request, group_id):
 #     }
 #     return render(request, 'groups/admin.html', context)
 
+
+@login_required(redirect_field_name="")
 def adminPageAddTournament(request, group_id):
     form = CreateTournamentForm(request.POST or None)
     user = get_object_or_404(User, username=request.user)
@@ -514,6 +523,8 @@ def adminPageAddTournament(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
+
+@login_required(redirect_field_name="")
 def adminPageEditTournament(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -529,6 +540,8 @@ def adminPageEditTournament(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
+
+@login_required(redirect_field_name="")
 def adminPageAddGames(request, group_id):
     form = CreateGameForm(request.POST or None)
     user = get_object_or_404(User, username=request.user)
@@ -581,6 +594,9 @@ def adminPageAddGames(request, group_id):
         'wallet': wallet
     }
     return render(request, 'groups/admin.html', context)
+
+
+@login_required(redirect_field_name="")
 def adminPageEditGames(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -596,6 +612,8 @@ def adminPageEditGames(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
+
+@login_required(redirect_field_name="")
 def adminPageMembers(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -611,6 +629,8 @@ def adminPageMembers(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
+
+@login_required(redirect_field_name="")
 def tournament_view(request, tournament_id, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -636,6 +656,8 @@ def tournament_view(request, tournament_id, group_id):
     }
     return render(request, 'groups/tournament_view.html', context)
 
+
+@login_required(redirect_field_name="")
 def completed_game_list_view(request, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -673,6 +695,8 @@ def completed_game_list_view(request, group_id):
     }
     return render(request, "groups/completed_game_list_view.html", context)
 
+
+@login_required(redirect_field_name="")
 def detail(request, betting_group_id, group_id):
     user = get_object_or_404(User, username=request.user)
     group = get_object_or_404(CommunityGroup, id=group_id)
@@ -697,3 +721,4 @@ def detail(request, betting_group_id, group_id):
         'wallet': wallet
                }
     return render(request, 'groups/game.html', context)
+

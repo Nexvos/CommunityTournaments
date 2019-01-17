@@ -54,7 +54,7 @@
                             onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                             onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
                     >
-                        <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                        <img src="{% if tournament.videogame.picture %}{{ tournament.videogame.picture.url }}{% endif %}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
                     </a>
 
                 {% endfor %}
@@ -94,7 +94,7 @@
                                     onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                                     onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
                             >
-                                <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                                <img src="{% if tournament.videogame.picture %}{{ tournament.videogame.picture.url }}{% endif %}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
                             </a>
 
                         {% endfor %}
@@ -111,7 +111,7 @@
                                     onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                                     onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
                             >
-                                <img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
+                                <img src="{% if tournament.videogame.picture %}{{ tournament.videogame.picture.url }}{% endif %}" style="width: 20px;"> &nbsp; {{ tournament.name|make_list|slice:':40'|join:'' }}
                             </a>
 
                         {% endfor %}
