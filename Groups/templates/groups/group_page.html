@@ -200,7 +200,7 @@ $('#lazyLoadLink').on('click', function() {
     console.log(page)
     $.ajax({
       type: 'post',
-      url: '{% url 'groups:lazy_load_posts' %}',
+      url: '{% url 'groups:lazy_load_posts' group_id=group.id %}{% if query %}?q={{ query }}{% endif %}',
       data: {
         'page': page,
         'csrfmiddlewaretoken': window.CSRF_TOKEN // from index.html

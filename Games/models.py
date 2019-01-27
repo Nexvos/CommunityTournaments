@@ -71,7 +71,7 @@ class Match(models.Model):
     user_a = models.ForeignKey(Profile, on_delete=models.PROTECT, related_name='%(class)s_user_a', blank=True,null=True)
     user_b = models.ForeignKey(Profile, on_delete=models.PROTECT, related_name='%(class)s_user_b', blank=True,null=True)
 
-    tournament = models.ForeignKey(Tournament, related_name='tournament_matches', blank=True, null=True, on_delete=models.PROTECT)
+    tournament = models.ForeignKey(Tournament, related_name='tournament_matches', blank=False, null=False, on_delete=models.PROTECT)
     start_datetime = models.DateTimeField('Game start datetime')
     estimated_duration = models.DurationField(default=timedelta(minutes=2))
 

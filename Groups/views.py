@@ -9,8 +9,7 @@ from django.contrib import messages
 from Games.models import Tournament, Match, Videogame
 from Bets.models import MatchBettingGroup, Bet
 from django.http import Http404
-from datetime import datetime
-from datetime import timedelta
+from django.utils import timezone
 from django.template import loader
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
@@ -130,8 +129,6 @@ def createGroup(request):
     form = CreateGroupForm()
 
     if request.method == "POST":
-
-        print(request.POST)
         group_name = request.POST['group_name']
         if 'invite_only' in request.POST:
             invite_only = request.POST['invite_only']
@@ -215,8 +212,8 @@ def group_page(request, group_id):
     # Nd to create separate qurysets for different tournament statuses and only display active tournaments
     # & tournaments not yet begun
     query = request.GET.get('q')
-    current_datetime = datetime.now()
-    three_months = timedelta(days=90)
+    current_datetime = timezone.now()
+    three_months = timezone.timedelta(days=90)
 
     if query:
         latest_game_list = latest_game_list.filter(
@@ -236,7 +233,7 @@ def group_page(request, group_id):
             ~Q(match__status=Match.finished_confirmed),
             ~Q(match__status=Match.finished_paid)
         ).order_by('match__start_datetime')[:12]
-        query = "None"
+        query = False
 
     upcoming_tournaments = tournament_list.filter(
             Q(start_datetime__gt=current_datetime),
@@ -256,7 +253,6 @@ def group_page(request, group_id):
             Q(end_datetime__lt=current_datetime),
             Q(end_datetime__gt=current_datetime - three_months)
         ).order_by('start_datetime')
-    print(latest_game_list)
     context = {
         'group': group,
         'latest_game_list': latest_game_list,
@@ -272,47 +268,69 @@ def group_page(request, group_id):
 
 @login_required(redirect_field_name="")
 def lazy_load_games(request, group_id):
-  page = request.POST.get('page')[:12]
-  print(page)
-  group = get_object_or_404(CommunityGroup, id=group_id)
-  latest_game_list = MatchBettingGroup.objects.filter(Q(group__id=group_id), Q(status=MatchBettingGroup.active)) # get just 5 posts
-  latest_game_list = latest_game_list.filter(
-      ~Q(match__status=Match.finished),
-      ~Q(match__status=Match.finished_not_confirmed),
-      ~Q(match__status=Match.finished_confirmed),
-      ~Q(match__status=Match.finished_paid)
-  ).order_by('match__start_datetime')
-  # use Django’s pagination
-  # https://docs.djangoproject.com/en/dev/topics/pagination/
-  results_per_page = 12
-  paginator = Paginator(latest_game_list, results_per_page)
-  print(paginator.page(1).object_list)
-  try:
-      games = paginator.page(page)
-      latest_game_list = games.object_list
-  except PageNotAnInteger:
-      games = paginator.page(2)
-  except EmptyPage:
-      games = paginator.page(paginator.num_pages)
-  print("test")
-  # build a html posts list with the paginated posts
-  games_list_html = loader.render_to_string(
-    'groups/games_list.html',
-    {
-        'latest_game_list': latest_game_list,
-        'group': group,
-     }
-  )
-  print("test2")
-  additional_html = "<script>var loop_number=" + str(int(page) * 12 - 12) + "</script>"
-  # package output data and return it as a JSON object
-  output_data = {
-    'games_list_html': additional_html + games_list_html,
-    'has_next': games.has_next()
-  }
-  print("test")
-  print(output_data)
-  return JsonResponse(output_data)
+    # Set user to request.user
+    user = request.user
+
+    # Fetch the group object
+    group = get_object_or_404(CommunityGroup, id=group_id)
+
+    # Attempt to get the ACTIVE wallet for this user for this group
+    # If this fails then the user is not a member of the group and should be presented with a 404
+    try:
+        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+    except Wallet.DoesNotExist:
+        raise Http404('You are not a member of this group.')
+
+    page = request.POST.get('page')
+
+    group = get_object_or_404(CommunityGroup, id=group_id)
+
+    latest_game_list = MatchBettingGroup.objects.filter(Q(group__id=group_id), Q(status=MatchBettingGroup.active))
+    query = request.GET.get('q')
+    if query:
+        latest_game_list = latest_game_list.filter(
+            ~Q(match__status=Match.finished),
+            ~Q(match__status=Match.finished_not_confirmed),
+            ~Q(match__status=Match.finished_confirmed),
+            ~Q(match__status=Match.finished_paid),
+            Q(match__tournament__videogame__name__iexact=query)
+        ).order_by('match__start_datetime')
+    else:
+        latest_game_list = latest_game_list.filter(
+            ~Q(match__status=Match.finished),
+            ~Q(match__status=Match.finished_not_confirmed),
+            ~Q(match__status=Match.finished_confirmed),
+            ~Q(match__status=Match.finished_paid)
+        ).order_by('match__start_datetime')
+
+    # use Django’s pagination
+    # https://docs.djangoproject.com/en/dev/topics/pagination/
+    results_per_page = 12
+    paginator = Paginator(latest_game_list, results_per_page)
+
+    try:
+        games = paginator.page(page)
+    except PageNotAnInteger:
+        games = paginator.page(2)
+    except EmptyPage:
+        games = paginator.page(paginator.num_pages)
+
+    latest_game_list = games.object_list
+    # build a html posts list with the paginated posts
+    games_list_html = loader.render_to_string(
+        'groups/games_list.html',
+        {
+            'latest_game_list': latest_game_list,
+            'group': group,
+        }
+    )
+    additional_html = "<script>var loop_number=" + str(int(page) * results_per_page - results_per_page) + "</script>"
+    # package output data and return it as a JSON object
+    output_data = {
+        'games_list_html': additional_html + games_list_html,
+        'has_next': games.has_next()
+    }
+    return JsonResponse(output_data)
 
 
 @login_required(redirect_field_name="")
@@ -327,7 +345,7 @@ def tournament_list_view(request, group_id):
     tournament_list = group.owning_group_tournaments.all()
     activesection = request.GET.get('activesection')
     query = request.GET.get('q')
-    current_datetime = datetime.now()
+    current_datetime = timezone.now()
 
 
     if query:
@@ -582,7 +600,7 @@ def adminPageAddGames(request, group_id):
                 new_game.user_a = user_a.profile
                 new_game.user_b = user_b.profile
                 new_game.start_datetime = game_start_datetime
-                new_game.estimated_duration = timedelta(minutes=game_duration)
+                new_game.estimated_duration = timezone.timedelta(minutes=game_duration)
                 new_game.twitch_url = twitch_url
 
                 new_game.save()
@@ -672,7 +690,6 @@ def completed_game_list_view(request, group_id):
     ).order_by('match__start_datetime')
 
     query = request.GET.get('q')
-    print(game_list)
     if query:
         if query != 'None':
             game_list = game_list.filter(
@@ -687,7 +704,6 @@ def completed_game_list_view(request, group_id):
         Q(match__status=Match.finished_confirmed) |
         Q(match__status=Match.finished_paid)
     ).order_by('match__start_datetime')
-    print(completed_games)
     context = {
         "group": group,
         "latest_game_list": completed_games,
