@@ -19,10 +19,13 @@
 
 
 {% block content %}
-<form action="{% url 'groups:invitePage' group_id=group.id %}" method="post">{% csrf_token %}
+<form action="{% url 'groups:invitePage' group_id=group.id page=1 %}{% if query %}?q={{ query }}{% endif %}" method="post">{% csrf_token %}
 <div class="row">
     <div class="col-md-3">
-        <input class="form-control" type="text" onkeyup="searchFunction()" placeholder="Search" aria-label="Search" id="nameSearch">
+        <input class="form-control row" type="text" onkeyup="searchFunction()" placeholder="Search" aria-label="Search" id="name_search" style="margin-bottom: 0.1rem;">
+        <button class="row btn" id="search_btn">
+            Search
+        </button>
     </div>
 
     <div class="col-md-9">
@@ -55,25 +58,51 @@
             </li>
         {% endfor %}
         </ul>
+        <br>
+        <nav aria-label="Page navigation">
+          <ul class="pagination">
+            {% if current_page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="{% url 'groups:invitePage' group_id=group.id page=current_page|add:"-1" %}{% if query %}?q={{ query }}{% endif %}">
+                    Previous
+                </a>
+            </li>
+            {% endif %}
+            {% if num_pages > 1 %}
+                {% for page in num_pages_range %}
+                <li class="page-item">
+                    <a class="page-link" href="{% url 'groups:invitePage' group_id=group.id page=forloop.counter %}{% if query %}?q={{ query }}{% endif %}">
+                        {{ forloop.counter }}
+                    </a>
+                </li>
+                {% endfor %}
+            {% endif %}
+            {% if current_page < num_pages %}
+            <li class="page-item">
+                <a class="page-link" href="{% url 'groups:invitePage' group_id=group.id page=current_page|add:"1" %}{% if query %}?q={{ query }}{% endif %}">
+                    Next
+                </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
     </div>
 </div>
 </form>
+
 <script>
-function searchFunction() {
-    var input, filter, ul, li, a, i;
-    input = document.getElementById("nameSearch");
-    filter = input.value.toUpperCase();
-    ul = document.getElementById("myUL");
-    li = ul.getElementsByTagName("li");
-    for (i = 0; i < li.length; i++) {
-        a = li[i].getElementsByTagName("a")[0];
-        if (a.innerHTML.toUpperCase().indexOf(filter) > -1) {
-            li[i].style.display = "";
-        } else {
-            li[i].style.display = "none";
-        }
-    }
-}
+$('#search_btn').on('click', function () {
+    var searchInput = $('#name_search').val();
+    var url = "{% url 'groups:invitePage' group_id=group.id page=1 %}" + "?q=" + searchInput;
+    window.open(url);
+});
+$('#name_search').on('keypress',function(e) {
+    if(e.which == 13) {
+        var searchInput = $('#name_search').val();
+        var url = "{% url 'groups:invitePage' group_id=group.id page=1 %}" + "?q=" + searchInput;
+        window.open(url);
+    };
+});
 </script>
 {% endblock %}
 

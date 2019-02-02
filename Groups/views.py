@@ -333,9 +333,12 @@ def lazy_load_games(request, group_id):
     return JsonResponse(output_data)
 
 
+# TODO: Show videogame name on list view page (probably in the HTML)
 @login_required(redirect_field_name="")
 def tournament_list_view(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -380,21 +383,75 @@ def tournament_list_view(request, group_id):
 
 
 @login_required(redirect_field_name="")
-def invitePage(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+def invitePage(request, group_id, page):
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
+    # Check that the user is a member of the group AND an admin
     try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active, admin=True)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    form = InviteMembersForm(request.POST or None)
-    model_array = []
-    model = User.objects.all()
+    # TODO: This could be sped up, if the first page only got the first 30 users etc...
+    # Get all Users in alphabetical order
+    users = User.objects.all()
 
+    # Get the q variable (if there is one)
+    query = request.GET.get('q')
+
+    # Filter by username (in the q variable)
+    if query:
+        if query !='None':
+            users = users.filter(username__icontains=query)
+    else:
+        query = 'None'
+
+    # Get all wallets associated with the group
     group_invites = group.groups_wallet.all()
 
+    # Get all users for the wallets associated with the group
+    group_invites_users = []
+    for wallet in group_invites:
+        group_invites_users.append(wallet.profile.user)
+
+    # Paginate the users
+    results_per_page = 30
+    paginator = Paginator(users, results_per_page)
+
+    num_pages = paginator.num_pages
+
+    try:
+        users = paginator.page(page)
+    except PageNotAnInteger:
+        users = paginator.page(1)
+    except EmptyPage:
+        users = paginator.page(num_pages)
+
+    # Iterate through each user and if they already have some association to the group then mark the association,
+    # if they don't then mark them as open to invite
+    model_array = []
+    for user in users:
+        if user in group_invites_users:
+            wallet = group_invites.filter(profile=user.profile)[0]
+            if wallet.status == wallet.sent:
+                model_array.append({"user": user, "invite_status": "sent"})
+            elif wallet.status == wallet.active:
+                model_array.append({"user": user, "invite_status": "member"})
+            # TODO: is declined blocked from the group or user? Should a group see if a user blocks it?
+            elif wallet.status == wallet.declined_blocked:
+                model_array.append({"user": user, "invite_status": "blocked"})
+            else:
+                model_array.append({"user": user, "invite_status": "invite"})
+        else:
+            model_array.append({"user": user, "invite_status": "invite"})
+
+    # Sort the list into alphabetical order
+    model_array = sorted(model_array, key=lambda k: k['user'].username, reverse=True)
+
+    form = InviteMembersForm(request.POST or None)
     if request.method == "POST":
         if form.is_valid():
             invitee_id = form.cleaned_data['profile_id']
@@ -422,30 +479,15 @@ def invitePage(request, group_id):
                     invite.inviter = user.profile
                     invite.save()
                     messages.success(request, 'Form submission successful')
-    for user_obj in model:
-        invite_count = 0
-        for user_invite in user_obj.profile.profiles_wallet.all():
-            if user_invite in group_invites:
-                invite_count += 1
-                if user_invite.status == user_invite.sent:
-                    model_array.append({"user": user_obj, "invite_status": "sent"})
-                elif user_invite.status == user_invite.active:
-                    model_array.append({"user": user_obj, "invite_status": "member"})
-                elif user_invite.status == user_invite.declined_blocked:
-                    model_array.append({"user": user_obj, "invite_status": "blocked"})
-                else:
-                    model_array.append({"user": user_obj, "invite_status": "invite"})
-        if invite_count == 0:
-            model_array.append({"user": user_obj, "invite_status": "invite"})
-    SORT_ORDER = {"member": 0, "sent": 1, "invite": 2, "blocked": 3}
-
-    model_array = sorted(model_array, key=lambda k: SORT_ORDER[k['invite_status']])
 
     context = {
         "group": group,
-        "model": model,
         "form": form,
         "model_array": model_array,
+        "num_pages": num_pages,
+        "num_pages_range": range(num_pages),
+        "current_page": page,
+        "query": query,
         'wallet': wallet
     }
     return render(request, 'groups/invite.html', context)
@@ -454,7 +496,10 @@ def invitePage(request, group_id):
 @login_required(redirect_field_name="")
 def adminPageOptions(request, group_id):
     form = UpdateGroupOptionsForm(request.POST or None)
-    user = get_object_or_404(User, username=request.user)
+
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -485,7 +530,9 @@ def adminPageOptions(request, group_id):
     return render(request, 'groups/admin.html', context)
 
 # def adminPageTournaments(request, group_id):
-#     user = get_object_or_404(User, username=request.user)
+#     # Set user to request.user
+#     user = request.user
+#
 #     group = get_object_or_404(CommunityGroup, id=group_id)
 #
 #     try:
@@ -503,7 +550,10 @@ def adminPageOptions(request, group_id):
 @login_required(redirect_field_name="")
 def adminPageAddTournament(request, group_id):
     form = CreateTournamentForm(request.POST or None)
-    user = get_object_or_404(User, username=request.user)
+
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
     videogames = Videogame.objects.all()
 
@@ -544,7 +594,9 @@ def adminPageAddTournament(request, group_id):
 
 @login_required(redirect_field_name="")
 def adminPageEditTournament(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -562,7 +614,10 @@ def adminPageEditTournament(request, group_id):
 @login_required(redirect_field_name="")
 def adminPageAddGames(request, group_id):
     form = CreateGameForm(request.POST or None)
-    user = get_object_or_404(User, username=request.user)
+
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -616,7 +671,9 @@ def adminPageAddGames(request, group_id):
 
 @login_required(redirect_field_name="")
 def adminPageEditGames(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -633,7 +690,9 @@ def adminPageEditGames(request, group_id):
 
 @login_required(redirect_field_name="")
 def adminPageMembers(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -650,7 +709,9 @@ def adminPageMembers(request, group_id):
 
 @login_required(redirect_field_name="")
 def tournament_view(request, tournament_id, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -677,7 +738,9 @@ def tournament_view(request, tournament_id, group_id):
 
 @login_required(redirect_field_name="")
 def completed_game_list_view(request, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
@@ -714,7 +777,9 @@ def completed_game_list_view(request, group_id):
 
 @login_required(redirect_field_name="")
 def detail(request, betting_group_id, group_id):
-    user = get_object_or_404(User, username=request.user)
+    # Set user to request.user
+    user = request.user
+
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:

@@ -52,8 +52,8 @@ class UrlTests(TestCase):
         self.assertEqual(url, '/1/')
 
     def test_group_invite(self):
-        url = reverse('groups:invitePage', kwargs={"group_id": 1})
-        self.assertEqual(url, '/1/invite/')
+        url = reverse('groups:invitePage', kwargs={"group_id": 1, "page": 1})
+        self.assertEqual(url, '/1/invite/1/')
 
     def test_group_admin(self):
         url = reverse('groups:adminPage', kwargs={"group_id": 1})
@@ -2280,17 +2280,18 @@ class TournamentListViewTests(TestCase):
 
 
 class InvitePageTests(TestCase):
-    # A list of users is returned in an array "model_array" - with their invite status, in this order:
-    #   1: Existing members
-    #   2: Users with a pending invite (from the group)
+    # A list of users is returned in an array "model_array" - with their invite status, in alphabetical order.
+    # The possible invite statuses are:
+    #   1: Existing members: "member"
+    #   2: Users with a pending invite (from the group): "sent"
     #   TODO: invite from groups and requests from users are possible,
     #    is this shown in the model and how do groups approve requesting users?
-    #   3: Users that have no association with the group and can be invited
-    #   4: Users that have been blocked
+    #   3: Users that have no association with the group and can be invited: "invite"
+    #   4: Users that have been blocked: "blocked"
     # ---
     # Admins can invite users and are given errors or success messages where appropriate
     # ---
-    # Only ADMINS of the group should be able to access this group - non-members should be presented with a 404
+    # Only ADMINS of the group should be able to access this page - non-members should be presented with a 404
 
     # Test 1: Check that a user is redirected to the login page when not logged in
     # Test 2: Check that a user that isn't associated with the group is delivered a 404
@@ -2338,23 +2339,34 @@ class InvitePageTests(TestCase):
         self.wallet_admin = Wallet.objects.create(
             profile=self.admin_user.profile,
             group=self.group_object,
-            status=Wallet.active
+            status=Wallet.active,
+            admin=True
         )
+        # TODO: Create a signal so that when a user creates a group they're set as the founder and an
+        #  admin (Logic may already be in the view - Will groups be created from anywhere else?)
+
+        # TODO: Add method for members to be promoted to admin by another admin - Members page?
+
+        # TODO: Add a separate members page - Invite page should be to invite new members and see who has a pending
+        #  invite (which could be revoked?) - Members page could be used to view current members, promote others,
+        #  kick members etc
+
         self.wallet_non_admin = Wallet.objects.create(
             profile=self.non_admin_user.profile,
             group=self.group_object,
-            status=Wallet.active
+            status=Wallet.active,
+            admin=False
         )
 
         self.url = 'groups:invitePage'
 
     def test_1_redirect_when_not_logged(self):
 
-        # Assert that the user is logged in
+        # Assert that the user is not logged in
         user = auth.get_user(self.client)
         self.assertFalse(user.is_authenticated)
 
-        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
 
         # Send the get request
         response = self.client.get(address)
@@ -2363,6 +2375,7 @@ class InvitePageTests(TestCase):
         self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
 
     def test_2_404_when_not_associated(self):
+
         # Log user in to admin account
         self.client.login(username='testuser_admin', password='12345')
 
@@ -2373,7 +2386,7 @@ class InvitePageTests(TestCase):
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
 
-        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
 
         # Send the get request
         response = self.client.get(address)
@@ -2381,19 +2394,39 @@ class InvitePageTests(TestCase):
         # Check that the response is 404.
         self.assertEqual(response.status_code, 404)
 
-    def test_3_404_when_not_active(self):
-        # Change wallet status to deactivated
-        self.wallet.status = Wallet.deactivated
-        self.wallet.save()
+    def test_3_404_when_not_admin(self):
 
-        # Ensure the wallet's status was changed
-        self.assertEqual(self.wallet.status, Wallet.deactivated)
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
 
         # Assert that the user is logged in
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
 
-        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_404_not_active_non_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_non_admin.status = Wallet.deactivated
+        self.wallet_non_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_non_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
 
         # Send the get request
         response = self.client.get(address)
@@ -2401,15 +2434,41 @@ class InvitePageTests(TestCase):
         # Check that the response is 404
         self.assertEqual(response.status_code, 404)
 
-    def test_4_200_when_active(self):
-        # Ensure the wallet's status is active
-        self.assertEqual(self.wallet.status, Wallet.active)
+    def test_5_404_not_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_admin.status, Wallet.deactivated)
 
         # Assert that the user is logged in
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated)
 
-        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_6_200_when_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
 
         # Send the get request
         response = self.client.get(address)
@@ -2421,13 +2480,16 @@ class InvitePageTests(TestCase):
         last_path = response.request['PATH_INFO']
         self.assertEqual(last_path, address)
 
-    def test_5(self):
-        # Assert that the user is logged in
-        user = auth.get_user(self.client)
-        self.assertTrue(user.is_authenticated)
-
-        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
-
-        # Send the get request
-        response = self.client.get(address)
+    # def test_7(self):
+    #     # Assert that the user is logged in
+    #     user = auth.get_user(self.client)
+    #     self.assertTrue(user.is_authenticated)
+    #
+    #     address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+    #
+    #     # Send the get request
+    #     response = self.client.get(address)
+    #
+    #     # Get the context
+    #     completed_tournaments = response.context['model_array']
 

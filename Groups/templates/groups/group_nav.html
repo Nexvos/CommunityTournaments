@@ -2,7 +2,7 @@
 {% url 'groups:groupPage' group_id=group.id as group_page %}
 {% url 'groups:tournament_list_view' group_id=group.id as tournament_page %}
 {% url 'groups:adminPage' group_id=group.id as admin_page %}
-{% url 'groups:invitePage' group_id=group.id as invite_page %}
+{% url 'groups:invitePage' group_id=group.id page=1 as invite_page %}
 {% url 'groups:completed_games_list_view' group_id=group.id as completed_games %}
 
 <style>
