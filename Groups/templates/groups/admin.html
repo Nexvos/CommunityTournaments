@@ -22,7 +22,6 @@
     {% url 'groups:adminPageAddGames' group_id=group.id as admin_add_game_page %}
     {% url 'groups:adminPageEditGames' group_id=group.id as admin_edit_game_page %}
     {% url 'groups:adminPageAddTournament' group_id=group.id as admin_add_tournament_page %}
-    {% url 'groups:adminPageEditTournament' group_id=group.id as admin_edit_tournament_page %}
     {% url 'groups:adminPageMembers' group_id=group.id as admin_member_page %}
 
 
@@ -35,17 +34,8 @@
           <a class="nav-link {% ifequal request.path admin_add_tournament_page %} active {% endifequal %}" href="{{ admin_add_tournament_page }}">
               Add Custom Tournament
           </a>
-          <a class="nav-link {% ifequal request.path admin_edit_tournament_page %} active {% endifequal %}" href="{{ admin_edit_tournament_page }}">
-              Edit Custom Tournament
-          </a>
           <a class="nav-link {% ifequal request.path admin_add_game_page %} active {% endifequal %}" href="{{ admin_add_game_page }}">
               Add Custom Games
-          </a>
-          <a class="nav-link {% ifequal request.path admin_edit_game_page %} active {% endifequal %}" href="{{ admin_edit_game_page }}">
-              Edit Custom Games
-          </a>
-          <a class="nav-link {% ifequal request.path admin_member_page %} active {% endifequal %}" href="{{ admin_member_page }}">
-              Edit Existing Members
           </a>
         </div>
 
@@ -60,20 +50,8 @@
         {% include 'groups/group_admin/admin_add_tournament.html' %}
       {% endifequal %}
 
-      {% ifequal request.path admin_edit_tournament_page %}
-        {% include 'groups/group_admin/admin_edit_tournament.html' %}
-      {% endifequal %}
-
       {% ifequal request.path admin_add_game_page %}
         {% include 'groups/group_admin/admin_add_game.html' %}
-      {% endifequal %}
-
-      {% ifequal request.path admin_edit_game_page %}
-        {% include 'groups/group_admin/admin_edit_game.html' %}
-      {% endifequal %}
-
-      {% ifequal request.path admin_member_page %}
-        {% include 'groups/group_admin/admin_members.html' %}
       {% endifequal %}
     </div>
 </div>

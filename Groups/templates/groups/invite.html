@@ -22,8 +22,8 @@
 <form action="{% url 'groups:invitePage' group_id=group.id page=1 %}{% if query %}?q={{ query }}{% endif %}" method="post">{% csrf_token %}
 <div class="row">
     <div class="col-md-3">
-        <input class="form-control row" type="text" onkeyup="searchFunction()" placeholder="Search" aria-label="Search" id="name_search" style="margin-bottom: 0.1rem;">
-        <button class="row btn" id="search_btn">
+        <input class="form-control row" type="text" onkeypress="if (event.keyCode == 13) {return false;}" placeholder="Search" aria-label="Search" id="name_search" style="margin-bottom: 0.1rem;">
+        <button type="button" class="row btn" id="search_btn">
             Search
         </button>
     </div>
@@ -94,13 +94,13 @@
 $('#search_btn').on('click', function () {
     var searchInput = $('#name_search').val();
     var url = "{% url 'groups:invitePage' group_id=group.id page=1 %}" + "?q=" + searchInput;
-    window.open(url);
+    window.location.href = url;
 });
 $('#name_search').on('keypress',function(e) {
     if(e.which == 13) {
         var searchInput = $('#name_search').val();
         var url = "{% url 'groups:invitePage' group_id=group.id page=1 %}" + "?q=" + searchInput;
-        window.open(url);
+        window.location.href = url;
     };
 });
 </script>

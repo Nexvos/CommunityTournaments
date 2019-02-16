@@ -191,13 +191,12 @@
 
 // needed when making post requests in Django
 // we’ll use this for the ajax request in script.js
+// TODO: Is this secure?
 window.CSRF_TOKEN = "{{ csrf_token }}";
 
 $('#lazyLoadLink').on('click', function() {
-    console.log("working?");
     var link = $(this);
     var page = link.data("page");
-    console.log(page)
     $.ajax({
       type: 'post',
       url: '{% url 'groups:lazy_load_posts' group_id=group.id %}{% if query %}?q={{ query }}{% endif %}',
@@ -209,7 +208,6 @@ $('#lazyLoadLink').on('click', function() {
         // if there are still more pages to load,
         // add 1 to the "Load More Posts" link's page data attribute
         // else hide the link
-        console.log("Dat re");
         if (data.has_next) {
             link.data('page', page+1);
         } else {

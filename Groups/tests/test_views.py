@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
 from django.template import loader
+import string
 User = get_user_model()
 
 
@@ -59,32 +60,23 @@ class UrlTests(TestCase):
         url = reverse('groups:adminPage', kwargs={"group_id": 1})
         self.assertEqual(url, '/1/admin/')
 
-    def test_group_admin_edit_game(self):
-        url = reverse('groups:adminPageEditGames', kwargs={"group_id": 1})
-        self.assertEqual(url, '/1/admin/games/edit/')
-
     def test_group_admin_add_game(self):
         url = reverse('groups:adminPageAddGames', kwargs={"group_id": 1})
         self.assertEqual(url, '/1/admin/games/add/')
-
-    def test_group_admin_edit_tournament(self):
-        url = reverse('groups:adminPageEditTournament', kwargs={"group_id": 1})
-        self.assertEqual(url, '/1/admin/tournaments/edit/')
 
     def test_group_admin_add_tournament(self):
         url = reverse('groups:adminPageAddTournament', kwargs={"group_id": 1})
         self.assertEqual(url, '/1/admin/tournaments/add/')
 
-    def test_group_admin_members(self):
-        url = reverse('groups:adminPageMembers', kwargs={"group_id": 1})
-        self.assertEqual(url, '/1/admin/members/')
+    def test_group_members(self):
+        url = reverse('groups:groupMembers', kwargs={"group_id": 1, 'page': 1})
+        self.assertEqual(url, '/1/members/1/')
 
     def test_group_tournament_list(self):
         url = reverse('groups:tournament_list_view', kwargs={"group_id": 1})
         self.assertEqual(url, '/1/tournaments/')
 
     def test_group_tournament(self):
-
         url = reverse('groups:tournament_view', kwargs={"group_id": 1, "tournament_id": 1})
         self.assertEqual(url, '/1/tournaments/1/')
 
@@ -700,7 +692,7 @@ class GroupSearchTests(TestCase):
 
         # Set wallet attributes
         group_id = self.group_object_private.id
-        status = Wallet.declined_blocked
+        status = Wallet.blocked_by_group
 
         # Create existing relationship with group
         wallet = Wallet.objects.create(
@@ -721,7 +713,7 @@ class GroupSearchTests(TestCase):
         )
 
         # check the wallet maintains correct status
-        self.assertEqual(wallet.status, Wallet.declined_blocked)
+        self.assertEqual(wallet.status, Wallet.blocked_by_group)
 
         # Assert that the error is correct
         self.assertFormError(response, 'form', None, "This group has blocked you. Please contact the group admin.")
@@ -739,7 +731,7 @@ class GroupSearchTests(TestCase):
 
         # Set wallet attributes
         group_id = self.group_object_not_private.id
-        status = Wallet.declined_blocked
+        status = Wallet.blocked_by_group
 
         # Create existing relationship with group
         wallet = Wallet.objects.create(
@@ -760,7 +752,7 @@ class GroupSearchTests(TestCase):
         )
 
         # check the wallet maintains correct status
-        self.assertEqual(wallet.status, Wallet.declined_blocked)
+        self.assertEqual(wallet.status, Wallet.blocked_by_group)
 
         # Assert that the error is correct
         self.assertFormError(response, 'form', None, "This group has blocked you. Please contact the group admin.")
@@ -1533,6 +1525,7 @@ class LazyLoadTests(TestCase):
     # Test 1: Test that the next 12 games are correctly returned
     # Test 2: Test that only members of the group can request the next 12 games
     # Test 3: Test that the games are correctly filtered with the q variable
+    # Test 4:
 
     def setUp(self):
         # Every test needs a client.
@@ -2299,11 +2292,11 @@ class InvitePageTests(TestCase):
     # Test 4: Check that a user that has a wallet with the associated group that is not active is delivered a 404
     # Test 5: Check that an admin that has a wallet with the associated group that is not active is delivered a 404
     # Test 6: Check that an ADMIN with a wallet associated with the group, which is active is delivered the correct page
-    # Test 7: Ensure "model_array" returns users in the correct order
-    # Test 8: Test that a user can be successfully invited, with success message being sent
-    # Test 9: Test that trying to invite a user that is 1. already a member 2. already invited or 3. declined_blocked
+    # Test 7: Ensure "model_array" returns a max of 25 users in alphabetical order in the correct format
+    # Test 8: Ensure that the q variable filters correctly
+    # Test 9: Test that a user can be successfully invited, with success message being sent
+    # Test 10: Test that trying to invite a user that is 1. already a member 2. already invited or 3. blocked_by_user
     # (i.e. the user is blocking invites from this group), cannot be re-invited and the admin is presented an error
-    # TODO: Check that declined_blocked means this
 
     def setUp(self):
         # Every test needs a client.
@@ -2344,12 +2337,6 @@ class InvitePageTests(TestCase):
         )
         # TODO: Create a signal so that when a user creates a group they're set as the founder and an
         #  admin (Logic may already be in the view - Will groups be created from anywhere else?)
-
-        # TODO: Add method for members to be promoted to admin by another admin - Members page?
-
-        # TODO: Add a separate members page - Invite page should be to invite new members and see who has a pending
-        #  invite (which could be revoked?) - Members page could be used to view current members, promote others,
-        #  kick members etc
 
         self.wallet_non_admin = Wallet.objects.create(
             profile=self.non_admin_user.profile,
@@ -2480,16 +2467,1316 @@ class InvitePageTests(TestCase):
         last_path = response.request['PATH_INFO']
         self.assertEqual(last_path, address)
 
-    # def test_7(self):
-    #     # Assert that the user is logged in
-    #     user = auth.get_user(self.client)
-    #     self.assertTrue(user.is_authenticated)
-    #
-    #     address = reverse(self.url, kwargs={'group_id': self.group_object.id})
-    #
-    #     # Send the get request
-    #     response = self.client.get(address)
-    #
-    #     # Get the context
-    #     completed_tournaments = response.context['model_array']
+    def test_7_model_array(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
 
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Create 90 users
+        created_users = []
+        model_array_clone = []
+
+        # 10 characters
+        alphabet = string.ascii_lowercase[:10]
+
+        for x in alphabet:
+            # loop 9 times
+            for y in range(1,10):
+                z = User.objects.create(username= x + 'testuser_' + str(y))
+                created_users.append(z)
+                model_array_clone.append({"user": z, "invite_status": "invite"})
+
+        created_users[2].username = "Atestuser_3"
+        created_users[2].save()
+        # Create various wallets for users
+        self.wallet_user_3 = Wallet.objects.create(
+            profile=created_users[3].profile,
+            group=self.group_object,
+            status=Wallet.sent,
+            admin=False
+        )
+        model_array_clone[3]["invite_status"] = "sent"
+
+        self.wallet_user_7 = Wallet.objects.create(
+            profile=created_users[7].profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+        model_array_clone[7]["invite_status"] = "member"
+
+        self.wallet_user_12 = Wallet.objects.create(
+            profile=created_users[12].profile,
+            group=self.group_object,
+            status=Wallet.blocked_by_group,
+            admin=False
+        )
+        model_array_clone[12]["invite_status"] = "blocked"
+
+        self.wallet_user_18 = Wallet.objects.create(
+            profile=created_users[18].profile,
+            group=self.group_object,
+            status=Wallet.deactivated,
+            admin=False
+        )
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        model_array = response.context['model_array']
+
+        self.assertEqual(model_array_clone[:25], model_array)
+
+    def test_8_model_array_filter(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # q variable is set as "1" - The model_array should contain any username with "1" in it
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1}) + "?q=1"
+
+        # Create 90 users
+        created_users = []
+        model_array_clone = []
+
+        # 10 characters
+        alphabet = string.ascii_lowercase[:10]
+
+        for x in alphabet:
+            # loop 9 times
+            for y in range(1,10):
+                z = User.objects.create(username= x + 'testuser_' + str(y))
+                created_users.append(z)
+                model_array_clone.append({"user": z, "invite_status": "invite"})
+
+        # list filtered to only include users with "1" in their name (which happens to occur every 9 users in our list)
+        filtered_model_array_clone = []
+        for x in range(10):
+            filtered_model_array_clone.append(model_array_clone[0+(9*x)])
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        model_array = response.context['model_array']
+
+        # Assert that the filtered list we created is equal to the variable returned by the view
+        self.assertEqual(filtered_model_array_clone, model_array)
+
+    def test_9_successfully_invite_user(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        created_user_1 = User.objects.create(username="invited_user")
+
+        self.assertRaises(Wallet.DoesNotExist, Wallet.objects.get, profile=created_user_1.profile)
+
+        response = self.client.post(address, {
+            "profile_id": created_user_1.profile.id
+        })
+
+        # Check that the wallet has been created
+        created_user_wallet = Wallet.objects.get(profile=created_user_1.profile)
+
+        # Check that the wallet contains the correct data
+        self.assertEqual(created_user_wallet.profile, created_user_1.profile)
+        self.assertEqual(created_user_wallet.status, Wallet.sent)
+        self.assertEqual(created_user_wallet.admin, False)
+        self.assertEqual(created_user_wallet.group, self.group_object)
+
+        # Create a new user with an existing "deactivated wallet" this will test that a user with an existing wallet,
+        # but that is not an active member or blocking member can be reinvited
+        created_user_2 = User.objects.create(username="deactivated_user")
+
+        created_wallet_deactivated = Wallet.objects.create(
+            profile=created_user_2.profile,
+            group=self.group_object,
+            status=Wallet.deactivated
+        )
+        response_deactivated = self.client.post(address, {
+            "profile_id": created_user_2.profile.id
+        })
+
+        # Re-fetch wallet
+        created_wallet_deactivated = Wallet.objects.get(profile=created_user_2.profile, group=self.group_object)
+
+        # Check that the wallet contains the correct data
+        self.assertEqual(created_wallet_deactivated.profile, created_user_2.profile)
+        self.assertEqual(created_wallet_deactivated.status, Wallet.sent)
+        self.assertEqual(created_wallet_deactivated.admin, False)
+        self.assertEqual(created_wallet_deactivated.group, self.group_object)
+
+    def test_10_invite_error_messages(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # check the non-admin wallet is active
+        self.assertEqual(self.wallet_non_admin.status, Wallet.active)
+
+        response_active = self.client.post(address, {
+            "profile_id": self.non_admin_user.profile.id
+        })
+
+        # check the wallet maintains correct status
+        self.assertEqual(self.wallet_non_admin.status, Wallet.active)
+
+        # Assert that the error is correct
+        self.assertFormError(response_active, 'form', None, "This user is already a member")
+
+        # Create 2 users; one with a pending invite and one that has blocked the group
+        created_user_1 = User.objects.create(username="invited_user")
+        created_user_2 = User.objects.create(username="blocked_user")
+
+        created_wallet_sent = Wallet.objects.create(
+            profile=created_user_1.profile,
+            group=self.group_object,
+            status=Wallet.sent
+        )
+        created_wallet_blocked = Wallet.objects.create(
+            profile=created_user_2.profile,
+            group=self.group_object,
+            status=Wallet.blocked_by_user
+        )
+
+        # Post request for sent user
+        response_active = self.client.post(address, {
+            "profile_id": created_user_1.profile.id
+        })
+
+        # check the wallet maintains correct status
+        self.assertEqual(created_wallet_sent.status, Wallet.sent)
+
+        # Assert that the error is correct
+        self.assertFormError(response_active, 'form', None, "This user already has a pending invite")
+
+        # Post request for blocked user
+        response_active = self.client.post(address, {
+            "profile_id": created_user_2.profile.id
+        })
+
+        # TODO: Ensure that a user can block a group from sending further invites on the front end and in the view
+        # check the wallet maintains correct status
+        self.assertEqual(created_wallet_blocked.status, Wallet.blocked_by_user)
+
+        # Assert that the error is correct
+        self.assertFormError(response_active, 'form', None, "This user is blocking invites from this group")
+
+
+class AdminOptionsPageTests(TestCase):
+    # This page allows an admin to change the group's attributes
+
+    # Test 1: Check that a user is redirected to the login page when not logged in
+    # Test 2: Check that a user that isn't associated with the group is delivered a 404
+    # Test 3: Check that a user that isn't an ADMIN of the group is delivered a 404
+    # Test 4: Check that a user that has a wallet with the associated group that is not active is delivered a 404
+    # Test 5: Check that an admin that has a wallet with the associated group that is not active is delivered a 404
+    # Test 6: Check that an ADMIN with a wallet associated with the group, which is active is delivered the correct page
+    # Test 7: Successful post will change group attributes
+    # Test 8: Unsuccessful post does not change group attributes
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+
+        self.url = 'groups:adminPage'
+
+    def test_1_redirect_when_not_logged(self):
+
+        # Assert that the user is not logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_2_404_when_not_associated(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Delete existing wallet
+        self.wallet_admin.delete()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_3_404_when_not_admin(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_404_not_active_non_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_non_admin.status = Wallet.deactivated
+        self.wallet_non_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_non_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_5_404_not_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_6_200_when_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 200
+        self.assertEqual(response.status_code, 200)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+
+class AdminAddTournamentTests(TestCase):
+    # This page allows an admin to add a tournament to the group
+
+    # Test 1: Check that a user is redirected to the login page when not logged in
+    # Test 2: Check that a user that isn't associated with the group is delivered a 404
+    # Test 3: Check that a user that isn't an ADMIN of the group is delivered a 404
+    # Test 4: Check that a user that has a wallet with the associated group that is not active is delivered a 404
+    # Test 5: Check that an admin that has a wallet with the associated group that is not active is delivered a 404
+    # Test 6: Check that an ADMIN with a wallet associated with the group, which is active is delivered the correct page
+    # Test 7: Successful post will create a new tournament
+    # Test 8: Unsuccessful post does not add a tournament and correctly fails
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+
+        self.url = 'groups:adminPageAddTournament'
+
+    def test_1_redirect_when_not_logged(self):
+
+        # Assert that the user is not logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_2_404_when_not_associated(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Delete existing wallet
+        self.wallet_admin.delete()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_3_404_when_not_admin(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_404_not_active_non_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_non_admin.status = Wallet.deactivated
+        self.wallet_non_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_non_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_5_404_not_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_6_200_when_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 200
+        self.assertEqual(response.status_code, 200)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+
+class AdminAddGameTests(TestCase):
+    # This page allows an admin to add a Game to a Tournament
+
+    # Test 1: Check that a user is redirected to the login page when not logged in
+    # Test 2: Check that a user that isn't associated with the group is delivered a 404
+    # Test 3: Check that a user that isn't an ADMIN of the group is delivered a 404
+    # Test 4: Check that a user that has a wallet with the associated group that is not active is delivered a 404
+    # Test 5: Check that an admin that has a wallet with the associated group that is not active is delivered a 404
+    # Test 6: Check that an ADMIN with a wallet associated with the group, which is active is delivered the correct page
+    # Test 7: Successful post will create a new game
+    # Test 8: Unsuccessful post does not add a game and correctly fails
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+
+        self.url = 'groups:adminPageAddGames'
+
+    def test_1_redirect_when_not_logged(self):
+
+        # Assert that the user is not logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_2_404_when_not_associated(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Delete existing wallet
+        self.wallet_admin.delete()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_3_404_when_not_admin(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_404_not_active_non_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_non_admin.status = Wallet.deactivated
+        self.wallet_non_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_non_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_5_404_not_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_6_200_when_active_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 200
+        self.assertEqual(response.status_code, 200)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+
+class MembersPageTests(TestCase):
+    # This page shows a list of members in the group and allows admins to remove users, remove and block, promote a
+    # user to an admin or revoke a users admin access (if they're the founder)
+    # ----
+    # A founder cannot be removed, banned or demoted by an admin, or by themselves
+    # TODO: Can a founder leave a group?
+    # An admin can only be removed, banned or demoted by the founder
+    # A user can only be promoted by the founder
+    # ----
+    # TODO: Change model so Admin is always True if founder is True
+    # Test 1: Check that a user is redirected to the login page when not logged in
+    # Test 2: Check that a user that isn't associated with the group is delivered a 404
+    # Test 3: Check that a user that has a wallet with the associated group that is not active is delivered a 404
+    # Test 4: Check that a user with a wallet associated with the group, which is active is delivered the correct page
+    # Test 5: Ensure "model_array" returns a max of 25 users in alphabetical order in the correct format
+    # Test 6: Ensure that the q variable filters correctly
+    # Test 7: Test that a user cannot perform any admin commands
+    # Test 8: Test that an admin cannot promote a user to admin
+    # Test 8: Test that a founder can promote a user to admin
+    # Test 9: Test that a founder can demote an admin
+    # Test 10: Test that an admin can not demote another admin
+    # Test 11: Test than a founder cannot be demoted
+    # Test 12: Test that an admin can remove a user from the group
+    # Test 13: Test that an admin can remove and block a user from the group
+
+    # TODO: Allow a user to remove themself from the group
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        self.founder = User.objects.create(username='testuser_founder')
+        self.founder.set_password('12345')
+        self.founder.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+        self.wallet_founder = Wallet.objects.create(
+            profile=self.founder.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True,
+            founder=True
+        )
+
+        self.url = 'groups:groupMembers'
+
+    def test_1_redirect_when_not_logged(self):
+
+        # Assert that the user is not logged in
+        user = auth.get_user(self.client)
+        self.assertFalse(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 302 OK.
+        self.assertRedirects(response, '/accounts/login/', status_code=302, target_status_code=200)
+
+    def test_2_404_when_not_associated(self):
+
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Delete existing wallet
+        self.wallet_admin.delete()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_3_404_not_active(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Change wallet status to deactivated
+        self.wallet_non_admin.status = Wallet.deactivated
+        self.wallet_non_admin.save()
+
+        # Ensure the wallet's status was changed
+        self.assertEqual(self.wallet_non_admin.status, Wallet.deactivated)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_4_200_when_active(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_non_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 200
+        self.assertEqual(response.status_code, 200)
+
+        # Assert that the user has NOT been redirected
+        last_path = response.request['PATH_INFO']
+        self.assertEqual(last_path, address)
+
+    def test_5_model_array(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Create 90 users
+        created_users = []
+        model_array_clone = []
+
+        # 10 characters
+        alphabet = string.ascii_lowercase[:10]
+        loop_counter = 0
+        wallet_dict = {}
+        for x in alphabet:
+            # loop 9 times
+            for y in range(1, 10):
+                loop_counter += 1
+                z = User.objects.create(username= x + 'testuser_' + str(y))
+                created_users.append(z)
+                wallet_dict["wallet_user_{0}".format(loop_counter)] = Wallet.objects.create(
+                    profile=z.profile,
+                    group=self.group_object,
+                    status=Wallet.active,
+                    admin=False
+                )
+                model_array_clone.append(
+                    {
+                        "user": z,
+                        "wallet": wallet_dict["wallet_user_{0}".format(loop_counter)],
+                        "admin_status": False,
+                        "founder_status": False
+                    }
+                )
+
+        # change various wallets for users
+        wallet_user_2 = wallet_dict["wallet_user_2"]
+        wallet_user_2.admin = True
+        wallet_user_2.save()
+        model_array_clone[1]["admin_status"] = True
+
+        created_users[2].username = "Atestuser_3"
+        created_users[2].save()
+
+        wallet_user_7 = wallet_dict["wallet_user_7"]
+        wallet_user_7.admin = True
+        wallet_user_7.founder = True
+        wallet_user_7.save()
+        model_array_clone[6]["admin_status"] = True
+        model_array_clone[6]["founder_status"] = True
+
+        wallet_user_13 = wallet_dict["wallet_user_13"]
+        wallet_user_13.admin = True
+        wallet_user_13.save()
+        model_array_clone[12]["admin_status"] = True
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        model_array = response.context['model_array']
+
+        self.assertEqual(model_array_clone[:25], model_array)
+
+    def test_6_model_array_filter(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # q variable is set as "1" - The model_array should contain any username with "1" in it
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1}) + "?q=1"
+
+        # Create 90 users
+        created_users = []
+        model_array_clone = []
+
+        # 10 characters
+        alphabet = string.ascii_lowercase[:10]
+        loop_counter = 0
+        wallet_dict = {}
+        for x in alphabet:
+            # loop 9 times
+            for y in range(1, 10):
+                loop_counter += 1
+                z = User.objects.create(username=x + 'testuser_' + str(y))
+                created_users.append(z)
+                wallet_dict["wallet_user_{0}".format(loop_counter)] = Wallet.objects.create(
+                    profile=z.profile,
+                    group=self.group_object,
+                    status=Wallet.active,
+                    admin=False
+                )
+                model_array_clone.append(
+                    {
+                        "user": z,
+                        "wallet": wallet_dict["wallet_user_{0}".format(loop_counter)],
+                        "admin_status": False,
+                        "founder_status": False
+                    }
+                )
+
+        # change various wallets for users
+        wallet_user_2 = wallet_dict["wallet_user_2"]
+        wallet_user_2.admin = True
+        wallet_user_2.save()
+        model_array_clone[1]["admin_status"] = True
+
+        created_users[2].username = "Atestuser_3"
+        created_users[2].save()
+
+        wallet_user_7 = wallet_dict["wallet_user_7"]
+        wallet_user_7.admin = True
+        wallet_user_7.founder = True
+        wallet_user_7.save()
+        model_array_clone[6]["admin_status"] = True
+        model_array_clone[6]["founder_status"] = True
+
+        wallet_user_13 = wallet_dict["wallet_user_13"]
+        wallet_user_13.admin = True
+        wallet_user_13.save()
+        model_array_clone[12]["admin_status"] = True
+
+        # list filtered to only include users with "1" in their name (which happens to occur every 9 users in our list)
+        filtered_model_array_clone = []
+        for x in range(10):
+            filtered_model_array_clone.append(model_array_clone[0+(9*x)])
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Get the context
+        model_array = response.context['model_array']
+
+        # Assert that the filtered list we created is equal to the variable returned by the view
+        self.assertEqual(filtered_model_array_clone, model_array)
+
+    def test_7_user_cannot_use_admin(self):
+        # Log user in to non-admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Assert the user is not an admin
+        non_admin_wallet = Wallet.objects.get(profile=user.profile, group=self.group_object)
+        self.assertFalse(non_admin_wallet.admin)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        # Make any admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_admin.id,
+            "admin_command": "ban_user"
+        })
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You do not have admin status, so cannot make this command.")
+
+    def test_8_admin_cannot_promote_user(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertFalse(self.wallet_non_admin.admin)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_non_admin.id,
+            "admin_command": "promote_to_admin"
+        })
+        non_admin_wallet = Wallet.objects.get(profile=self.non_admin_user.profile, group=self.group_object)
+
+        self.assertFalse(non_admin_wallet.admin)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You do not have founder status, so cannot make this command.")
+
+    def test_9_founder_can_promote_user(self):
+        # Log user in to founder account
+        self.client.login(username='testuser_founder', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertFalse(self.wallet_non_admin.admin)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_non_admin.id,
+            "admin_command": "promote_to_admin"
+        })
+        non_admin_wallet = Wallet.objects.get(profile=self.non_admin_user.profile, group=self.group_object)
+
+        self.assertTrue(non_admin_wallet.admin)
+
+    def test_10_founder_can_demote_admin(self):
+        # Log user in to founder account
+        self.client.login(username='testuser_founder', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertTrue(self.wallet_admin.admin)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_admin.id,
+            "admin_command": "remove_admin"
+        })
+        admin_wallet = Wallet.objects.get(profile=self.admin_user.profile, group=self.group_object)
+
+        self.assertFalse(admin_wallet.admin)
+
+    def test_11_admin_cannot_demote_admin(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertTrue(self.wallet_admin.admin)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_admin.id,
+            "admin_command": "remove_admin"
+        })
+        admin_wallet = Wallet.objects.get(profile=self.admin_user.profile, group=self.group_object)
+
+        self.assertTrue(admin_wallet.admin)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You do not have founder status, so cannot make this command.")
+
+    def test_12_founder_cannot_be_demoted(self):
+        # Log user in to founder account
+        self.client.login(username='testuser_founder', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertTrue(self.wallet_founder.admin)
+        self.assertTrue(self.wallet_founder.founder)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_founder.id,
+            "admin_command": "remove_admin"
+        })
+        founder_wallet = Wallet.objects.get(profile=self.founder.profile, group=self.group_object)
+
+        self.assertTrue(founder_wallet.admin)
+        self.assertTrue(founder_wallet.founder)
+
+        # Assert that the error is correct
+        self.assertFormError(response, 'form', None, "You cannot promote, demote, ban or remove the founder.")
+
+    def test_13_admin_can_remove_user(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertEqual(self.wallet_non_admin.status, Wallet.active)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_non_admin.id,
+            "admin_command": "remove_user"
+        })
+        non_admin_wallet = Wallet.objects.get(profile=self.non_admin_user.profile, group=self.group_object)
+
+        self.assertEqual(non_admin_wallet.status, Wallet.deactivated)
+
+    def test_14_admin_can_remove_and_block_user(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, 'page': 1})
+
+        self.assertEqual(self.wallet_non_admin.status, Wallet.active)
+
+        # Make admin command
+        response = self.client.post(address, {
+            "wallet_id": self.wallet_non_admin.id,
+            "admin_command": "ban_user"
+        })
+        non_admin_wallet = Wallet.objects.get(profile=self.non_admin_user.profile, group=self.group_object)
+
+        self.assertEqual(non_admin_wallet.status, Wallet.blocked_by_group)
+
+class TournamentViewTests(TestCase):
+    # This page shows details of a tournament and any games in that tournament.
+    # ----
+    # The correct tournament object should be passed through context and a list of 12 Match Betting Groups associated with
+    # that tournament in order (most recent first). Only users with an active wallet should be able to access this
+    # group, everyone else should get a 404.
+    #
+    # Check that a user is a member of the group needs to be done in lazy load too
+    # ----
+    # Test 1:
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        self.founder = User.objects.create(username='testuser_founder')
+        self.founder.set_password('12345')
+        self.founder.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+        self.wallet_founder = Wallet.objects.create(
+            profile=self.founder.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True,
+            founder=True
+        )
+
+        self.url = 'groups:groupMembers'

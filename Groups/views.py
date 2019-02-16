@@ -101,7 +101,7 @@ def groupSearch(request):
             else:
                 if wallet.status == wallet.active:
                     form.add_error(None, "You are already a member of this group.")
-                elif wallet.status == wallet.declined_blocked:
+                elif wallet.status == wallet.blocked_by_group:
                     form.add_error(None, "This group has blocked you. Please contact the group admin.")
                 else:
                     if group.private:
@@ -265,9 +265,9 @@ def group_page(request, group_id):
     }
     return render(request, 'groups/group_page.html', context)
 
-
+# TODO: If no videogame is assigned to a tournament, then there should be a default image for the logo
 @login_required(redirect_field_name="")
-def lazy_load_games(request, group_id):
+def lazy_load_games(request, group_id, tournament_id=None):
     # Set user to request.user
     user = request.user
 
@@ -287,6 +287,11 @@ def lazy_load_games(request, group_id):
 
     latest_game_list = MatchBettingGroup.objects.filter(Q(group__id=group_id), Q(status=MatchBettingGroup.active))
     query = request.GET.get('q')
+    if tournament_id:
+        tournament = get_object_or_404(Tournament, id=tournament_id)
+    else:
+        tournament = None
+
     if query:
         latest_game_list = latest_game_list.filter(
             ~Q(match__status=Match.finished),
@@ -296,12 +301,21 @@ def lazy_load_games(request, group_id):
             Q(match__tournament__videogame__name__iexact=query)
         ).order_by('match__start_datetime')
     else:
-        latest_game_list = latest_game_list.filter(
-            ~Q(match__status=Match.finished),
-            ~Q(match__status=Match.finished_not_confirmed),
-            ~Q(match__status=Match.finished_confirmed),
-            ~Q(match__status=Match.finished_paid)
-        ).order_by('match__start_datetime')
+        if tournament:
+            latest_game_list = latest_game_list.filter(
+                ~Q(match__status=Match.finished),
+                ~Q(match__status=Match.finished_not_confirmed),
+                ~Q(match__status=Match.finished_confirmed),
+                ~Q(match__status=Match.finished_paid),
+                Q(match__tournament=tournament)
+            ).order_by('match__start_datetime')
+        else:
+            latest_game_list = latest_game_list.filter(
+                ~Q(match__status=Match.finished),
+                ~Q(match__status=Match.finished_not_confirmed),
+                ~Q(match__status=Match.finished_confirmed),
+                ~Q(match__status=Match.finished_paid)
+            ).order_by('match__start_datetime')
 
     # use Django’s pagination
     # https://docs.djangoproject.com/en/dev/topics/pagination/
@@ -382,6 +396,7 @@ def tournament_list_view(request, group_id):
     return render(request, "groups/tournament_list_view.html", context)
 
 
+# Admin Page
 @login_required(redirect_field_name="")
 def invitePage(request, group_id, page):
     # Set user to request.user
@@ -395,16 +410,16 @@ def invitePage(request, group_id, page):
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    # TODO: This could be sped up, if the first page only got the first 30 users etc...
+    # TODO: This could be sped up, if the first page only got the first 25 users etc...
     # Get all Users in alphabetical order
-    users = User.objects.all()
+    users = User.objects.order_by("username")
 
     # Get the q variable (if there is one)
     query = request.GET.get('q')
 
     # Filter by username (in the q variable)
     if query:
-        if query !='None':
+        if query != 'None':
             users = users.filter(username__icontains=query)
     else:
         query = 'None'
@@ -417,31 +432,30 @@ def invitePage(request, group_id, page):
     for wallet in group_invites:
         group_invites_users.append(wallet.profile.user)
 
-    # Paginate the users
-    results_per_page = 30
+    # Paginate the users first before iterating
+    results_per_page = 25
     paginator = Paginator(users, results_per_page)
 
     num_pages = paginator.num_pages
 
     try:
-        users = paginator.page(page)
+        users = paginator.page(page).object_list
     except PageNotAnInteger:
-        users = paginator.page(1)
+        users = paginator.page(1).object_list
     except EmptyPage:
-        users = paginator.page(num_pages)
+        users = paginator.page(num_pages).object_list
 
     # Iterate through each user and if they already have some association to the group then mark the association,
     # if they don't then mark them as open to invite
     model_array = []
     for user in users:
         if user in group_invites_users:
-            wallet = group_invites.filter(profile=user.profile)[0]
-            if wallet.status == wallet.sent:
+            group_wallet = group_invites.filter(profile=user.profile)[0]
+            if group_wallet.status == group_wallet.sent:
                 model_array.append({"user": user, "invite_status": "sent"})
-            elif wallet.status == wallet.active:
+            elif group_wallet.status == group_wallet.active:
                 model_array.append({"user": user, "invite_status": "member"})
-            # TODO: is declined blocked from the group or user? Should a group see if a user blocks it?
-            elif wallet.status == wallet.declined_blocked:
+            elif group_wallet.status == group_wallet.blocked_by_group:
                 model_array.append({"user": user, "invite_status": "blocked"})
             else:
                 model_array.append({"user": user, "invite_status": "invite"})
@@ -449,7 +463,7 @@ def invitePage(request, group_id, page):
             model_array.append({"user": user, "invite_status": "invite"})
 
     # Sort the list into alphabetical order
-    model_array = sorted(model_array, key=lambda k: k['user'].username, reverse=True)
+    model_array = sorted(model_array, key=lambda k: k['user'].username.upper(), reverse=False)
 
     form = InviteMembersForm(request.POST or None)
     if request.method == "POST":
@@ -472,7 +486,7 @@ def invitePage(request, group_id, page):
                     form.add_error(None, "This user already has a pending invite")
                 elif invite.status == invite.active:
                     form.add_error(None, "This user is already a member")
-                elif invite.status == invite.declined_blocked:
+                elif invite.status == invite.blocked_by_user:
                     form.add_error(None, "This user is blocking invites from this group")
                 else:
                     invite.status = invite.sent
@@ -493,20 +507,20 @@ def invitePage(request, group_id, page):
     return render(request, 'groups/invite.html', context)
 
 
+# Admin Page
 @login_required(redirect_field_name="")
 def adminPageOptions(request, group_id):
-    form = UpdateGroupOptionsForm(request.POST or None)
-
     # Set user to request.user
     user = request.user
 
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active, admin=True)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
+    form = UpdateGroupOptionsForm(request.POST or None)
     if request.method == "POST":
         if form.is_valid():
             invite_only = form.cleaned_data['invite_only']
@@ -529,24 +543,8 @@ def adminPageOptions(request, group_id):
     }
     return render(request, 'groups/admin.html', context)
 
-# def adminPageTournaments(request, group_id):
-#     # Set user to request.user
-#     user = request.user
-#
-#     group = get_object_or_404(CommunityGroup, id=group_id)
-#
-#     try:
-#         wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
-#     except Wallet.DoesNotExist:
-#         raise Http404('You are not a member of this group.')
-#
-#     context = {
-#         "group": group,
-#         'wallet': wallet
-#     }
-#     return render(request, 'groups/admin.html', context)
 
-
+# Admin Page
 @login_required(redirect_field_name="")
 def adminPageAddTournament(request, group_id):
     form = CreateTournamentForm(request.POST or None)
@@ -558,7 +556,7 @@ def adminPageAddTournament(request, group_id):
     videogames = Videogame.objects.all()
 
     try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active, admin=True)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
@@ -592,25 +590,7 @@ def adminPageAddTournament(request, group_id):
     return render(request, 'groups/admin.html', context)
 
 
-@login_required(redirect_field_name="")
-def adminPageEditTournament(request, group_id):
-    # Set user to request.user
-    user = request.user
-
-    group = get_object_or_404(CommunityGroup, id=group_id)
-
-    try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
-    except Wallet.DoesNotExist:
-        raise Http404('You are not a member of this group.')
-
-    context = {
-        "group": group,
-        'wallet': wallet
-    }
-    return render(request, 'groups/admin.html', context)
-
-
+# Admin Page
 @login_required(redirect_field_name="")
 def adminPageAddGames(request, group_id):
     form = CreateGameForm(request.POST or None)
@@ -621,9 +601,10 @@ def adminPageAddGames(request, group_id):
     group = get_object_or_404(CommunityGroup, id=group_id)
 
     try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
+        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active, admin=True)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
+
     if request.method == "POST":
         if form.is_valid():
             tournament_id = form.cleaned_data['tournament_id']
@@ -669,42 +650,136 @@ def adminPageAddGames(request, group_id):
     return render(request, 'groups/admin.html', context)
 
 
+# TODO: Add blocked users page to admin
 @login_required(redirect_field_name="")
-def adminPageEditGames(request, group_id):
+def groupMembers(request, group_id, page):
     # Set user to request.user
     user = request.user
 
     group = get_object_or_404(CommunityGroup, id=group_id)
 
+    # Check that the user is a member of the group AND an admin
     try:
         wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    context = {
-        "group": group,
-        'wallet': wallet
-    }
-    return render(request, 'groups/admin.html', context)
+    # Get all active wallets associated with the group
+    active_wallets = group.groups_wallet.filter(status=Wallet.active)
 
+    # Get the q variable (if there is one)
+    query = request.GET.get('q')
 
-@login_required(redirect_field_name="")
-def adminPageMembers(request, group_id):
-    # Set user to request.user
-    user = request.user
+    # Filter by username (in the q variable)
+    if query:
+        if query != 'None':
+            active_wallets = active_wallets.filter(profile__user__username__icontains=query)
+    else:
+        query = 'None'
 
-    group = get_object_or_404(CommunityGroup, id=group_id)
+    # Get all users for the active wallets associated with the group
+    model_array = []
+    for model_array_wallet in active_wallets:
+        model_array.append(
+            {
+                "user": model_array_wallet.profile.user,
+                "wallet": model_array_wallet,
+                "admin_status": model_array_wallet.admin,
+                "founder_status": model_array_wallet.founder
+            }
+        )
+
+    # Sort the list into alphabetical order
+    model_array = sorted(model_array, key=lambda k: k['user'].username.upper(), reverse=False)
+    # Paginate the users
+    results_per_page = 25
+
+    paginator = Paginator(model_array, results_per_page)
+
+    num_pages = paginator.num_pages
 
     try:
-        wallet = Wallet.objects.get(group=group, profile=user.profile, status=Wallet.active)
-    except Wallet.DoesNotExist:
-        raise Http404('You are not a member of this group.')
+        model_array = paginator.page(page).object_list
+    except PageNotAnInteger:
+        model_array = paginator.page(1).object_list
+    except EmptyPage:
+        model_array = paginator.page(num_pages).object_list
+
+    form = MembersAdminCommandForm(request.POST or None)
+
+    if request.method == "POST":
+        # Admin commands can only be used if you're an admin
+        if wallet.admin:
+            if form.is_valid():
+                wallet_id = form.cleaned_data['wallet_id']
+                admin_command = form.cleaned_data['admin_command']
+
+                form_wallet = get_object_or_404(Wallet, id=wallet_id, group=group, status=Wallet.active)
+
+                # Founders cannot be promoted, demoted, banned or removed
+                if form_wallet.founder:
+                    form.add_error(None, "You cannot promote, demote, ban or remove the founder.")
+                elif admin_command == "promote_to_admin":
+                    # Only founders can promote a user to admin
+                    if wallet.founder:
+                        form_wallet.admin = True
+                        form_wallet.save()
+                        messages.success(request, 'User has successfully been given admin status.')
+                    else:
+                        form.add_error(None, "You do not have founder status, so cannot make this command.")
+                elif admin_command == "remove_admin":
+                    # Only founders can remove an admin
+                    if wallet.founder:
+                        form_wallet.admin = False
+                        form_wallet.save()
+                        messages.success(request, 'User has successfully had their admin status removed.')
+                    else:
+                        form.add_error(None, "You do not have founder status, so cannot make this command.")
+                elif admin_command == "remove_user":
+                    # Founders can remove any user (even admins)
+                    if wallet.founder:
+                        form_wallet.status = Wallet.deactivated
+                        form_wallet.save()
+                        messages.success(request, 'User has been successfully removed from the group.')
+                    else:
+                        # Admins can remove normal users, not other admins
+                        if form_wallet.admin:
+                            form.add_error(None, "You do not have founder status, so cannot remove an admin.")
+                        else:
+                            form_wallet.status = Wallet.deactivated
+                            form_wallet.save()
+                            messages.success(request, 'User has been successfully removed from the group.')
+                elif admin_command == "ban_user":
+                    # Founders can ban any user (even admins)
+                    if wallet.founder:
+                        form_wallet.status = Wallet.blocked_by_group
+                        form_wallet.save()
+                        messages.success(request, 'User has been successfully banned and removed from the group.')
+                    else:
+                        # Admins can ban normal users, not other admins
+                        if form_wallet.admin:
+                            form.add_error(None, "You do not have founder status, so cannot ban an admin.")
+                        else:
+                            form_wallet.status = Wallet.blocked_by_group
+                            form_wallet.save()
+                            messages.success(request, 'User has been successfully banned and removed from the group.')
+                else:
+                    form.add_error(None, "This is not a valid command.")
+        else:
+            print("user is not admin")
+            form.add_error(None, "You do not have admin status, so cannot make this command.")
 
     context = {
         "group": group,
+        "form": form,
+        "model_array": model_array,
+        "num_pages": num_pages,
+        "num_pages_range": range(num_pages),
+        "current_page": page,
+        "query": query,
         'wallet': wallet
     }
-    return render(request, 'groups/admin.html', context)
+    return render(request, 'groups/group_members.html', context)
 
 
 @login_required(redirect_field_name="")
@@ -723,7 +798,7 @@ def tournament_view(request, tournament_id, group_id):
     tournament_games = MatchBettingGroup.objects.filter(
         Q(group__id=group_id),
         Q(match__tournament__id=tournament_id)
-    ).order_by('match__start_datetime')
+    ).order_by('match__start_datetime')[:12]
 
     # TODO: Test that groups can't access tournaments they're not a part of
 

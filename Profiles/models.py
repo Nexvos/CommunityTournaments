@@ -58,26 +58,28 @@ class Wallet(models.Model):
     picture = models.ImageField(upload_to=upload_location, null=True, blank=True)
     colour = models.CharField(max_length=7, null=True, blank=True)
     ranking = models.IntegerField(default=0)
-    founder = models.BooleanField(default=False)
-    admin = models.BooleanField(default=False)
+    founder = models.BooleanField(default=False, blank=False, null=False)
+    admin = models.BooleanField(default=False, blank=False, null=False)
     inviter = models.ForeignKey(Profile, related_name='inviters_wallet', blank=True, null=True, on_delete=models.PROTECT)
     created = models.DateTimeField(editable=False)
     modified = models.DateTimeField()
 
-    active = "active"
-    deactivated = "deactivated"
-    sent = "sent"
-    requesting_invite = "requesting_invite"
-    declined = "declined"
-    declined_blocked = "declined_blocked"
+    active = "active"  # Active member of the group
+    deactivated = "deactivated"  # A member who has left or been kicked out of the group
+    sent = "sent"  # A user that has been invited to the group
+    requesting_invite = "requesting_invite"  # A user that has requested an invited from a private group
+    declined = "declined"  # A user that has had their request to join declined
+    blocked_by_group = "blocked_by_group"  # A user that has been blocked by the group
+    blocked_by_user = "blocked_by_user"  # Where a user has blocked a group from sending invites
 
     available_statuses = (
         (sent, "Sent"),
         (declined, "Declined"),
-        (declined_blocked, "Declined and Blocked"),
+        (blocked_by_group, "Blocked by Group"),
+        (blocked_by_user, "Blocked by User"),
         (active, "Active"),
         (deactivated, "Deactivated"),
-        (requesting_invite, "Requesting invite")
+        (requesting_invite, "Requesting Invite")
     )
 
     status = models.CharField(max_length=30,

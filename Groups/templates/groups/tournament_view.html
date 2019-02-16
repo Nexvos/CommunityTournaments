@@ -56,6 +56,9 @@
 
         <dt class="col-sm-2">Status:</dt>
         <dd class="col-sm-10">{{ tournament.status }}</dd>
+
+        <dt class="col-sm-2">Videogame:</dt>
+        <dd class="col-sm-10">{% if tournament.videogame %}{{ tournament.videogame }}{% else %}Not specified{% endif %}</dd>
     </dl>
     </div>
     <div class="betting-title rounded row" style=" margin-right: 0px; margin-left: 0px;">
@@ -85,6 +88,42 @@
     {% else %}
         <p>No games are available at this time.</p>
     {% endif %}
+
+<script>
+// needed when making post requests in Django
+// we’ll use this for the ajax request in script.js
+// TODO: Is this secure?
+window.CSRF_TOKEN = "{{ csrf_token }}";
+
+$('#lazyLoadLink').on('click', function() {
+    var link = $(this);
+    var page = link.data("page");
+    $.ajax({
+      type: 'post',
+      url: '{% url 'groups:lazy_load_posts_tournament' group_id=group.id tournament_id=tournament.id %}',
+      data: {
+        'page': page,
+        'csrfmiddlewaretoken': window.CSRF_TOKEN // from index.html
+      },
+      success: function(data) {
+        // if there are still more pages to load,
+        // add 1 to the "Load More Posts" link's page data attribute
+        // else hide the link
+        if (data.has_next) {
+            link.data('page', page+1);
+        } else {
+            link.hide();
+        };
+        // append html to the posts div
+
+        $('#games_list').append(data.games_list_html);
+      },
+      error: function(xhr, status, error) {
+        // shit happens friends!
+      }
+    });
+  });
+</script>
 
 <style>
 
