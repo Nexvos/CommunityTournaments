@@ -18,7 +18,7 @@ urlpatterns = [
     path('<int:group_id>/members/<int:page>/', views.groupMembers, name='groupMembers'),
     path('<int:group_id>/tournaments/', views.tournament_list_view, name='tournament_list_view'),
     path('<int:group_id>/tournaments/<int:tournament_id>/', views.tournament_view, name='tournament_view'),
-    path('<int:group_id>/<int:betting_group_id>/', views.detail, name='detail'),
+    path('<int:group_id>/<int:betting_group_id>/', views.match_view, name='matchView'),
     path('<int:group_id>/completed-games/', views.completed_game_list_view, name='completed_games_list_view'),
 
 ]

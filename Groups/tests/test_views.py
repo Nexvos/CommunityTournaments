@@ -6,8 +6,9 @@ from django.urls import reverse
 from Groups.models import CommunityGroup
 from Games.models import Tournament, Match, Videogame
 from Profiles.models import Wallet
-from Bets.models import MatchBettingGroup
+from Bets.models import MatchBettingGroup, Bet
 from django.utils import timezone
+from datetime import datetime
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
 from django.template import loader
@@ -81,7 +82,7 @@ class UrlTests(TestCase):
         self.assertEqual(url, '/1/tournaments/1/')
 
     def test_match_page(self):
-        url = reverse('groups:detail', kwargs={"group_id": 1, "betting_group_id": 1})
+        url = reverse('groups:matchView', kwargs={"group_id": 1, "betting_group_id": 1})
         self.assertEqual(url, '/1/1/')
 
     def test_completed_games_list(self):
@@ -1518,14 +1519,20 @@ class GroupPageTests(TestCase):
 class LazyLoadTests(TestCase):
     # Lazy_load takes a group_id and a "page" variable via post request
     # - The next 12 games are then sent back to the user
-    # --- The games should be filtered by the q variable and only be accessible by users that are a member of that group
+    # - The games should be filtered by the q variable and only be accessible by users that are a member of that group
+    # ---
+    # Lazy_load can also take a tournment_id via the url "lazy_load_posts_tournament", this should only return games for
+    # the tournament_id supplied - q variables cannot be used with this as tournaments are specific to one game
 
     # Matches 1-15 are in tournament 1 ::: 16-29 are in tournament 2 ::: 30 is in tournament 3
 
-    # Test 1: Test that the next 12 games are correctly returned
-    # Test 2: Test that only members of the group can request the next 12 games
-    # Test 3: Test that the games are correctly filtered with the q variable
-    # Test 4:
+    # Test 1: Test that the next 12 games are correctly returned (Tournament_id not supplied)
+    # Test 2: Test that only members of the group can request the next 12 games (Tournament_id not supplied)
+    # Test 3: Test that the games are correctly filtered with the q variable (Tournament_id not supplied)
+    # Test 4: Test that the correct number of games are returned when tournament 2's id is supplied (2)
+    # Test 5: Test that the q variable does not have an affect when the tournament_id is submitted
+    # Test 6: Test that a member of another group cannot view another groups games by submitting their group's ID and
+    # the tournament_id of another group's tournament
 
     def setUp(self):
         # Every test needs a client.
@@ -1538,6 +1545,7 @@ class LazyLoadTests(TestCase):
 
         # TODO: currently a user not in a group can be created for a user not active in said group - Can this be fixed
         #  at the model level, or does it have to be at the view level?
+        # TODO: Check - Must a user be in a group in order for the admin to create a game that includes them?
         # Create second user for matches
         self.user_2 = User.objects.create(username='testuser2')
         self.user_2.set_password("12345")
@@ -1755,6 +1763,153 @@ class LazyLoadTests(TestCase):
         self.assertEqual(test_data, response.content)
         # Check that the response is 200.
         self.assertEqual(response.status_code, 200)
+
+    def test_4_(self):
+        # Log user in
+        self.client.login(username='testuser', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        page = 2
+        results_per_page = 12
+        matches = self.tournament_2_matches
+        paginator = Paginator(matches, results_per_page)
+
+        try:
+            games = paginator.page(page)
+        except PageNotAnInteger:
+            games = paginator.page(2)
+        except EmptyPage:
+            games = paginator.page(paginator.num_pages)
+
+        latest_game_list = games.object_list
+
+        # build a html posts list with the paginated posts
+        games_list_html = loader.render_to_string(
+            'groups/games_list.html',
+            {
+                'latest_game_list': latest_game_list,
+                'group': self.group_object,
+            }
+        )
+        additional_html = "<script>var loop_number=" + str(int(page) * results_per_page - results_per_page) + "</script>"
+        # package output data and return it as a JSON object
+        output_data = {
+            'games_list_html': additional_html + games_list_html,
+            'has_next': games.has_next()
+        }
+        test_data = JsonResponse(output_data).content
+
+        address = reverse('groups:lazy_load_posts_tournament', kwargs={"group_id": self.group_object.id, "tournament_id": self.tournament_2.id})
+
+        response = self.client.post(address, {
+            "page": page
+        })
+
+        self.assertEqual(test_data, response.content)
+        # Check that the response is 200.
+        self.assertEqual(response.status_code, 200)
+
+    def test_5_(self):
+        # Log user in
+        self.client.login(username='testuser', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        page = 2
+        results_per_page = 12
+        matches = self.tournament_2_matches
+        paginator = Paginator(matches, results_per_page)
+
+        try:
+            games = paginator.page(page)
+        except PageNotAnInteger:
+            games = paginator.page(2)
+        except EmptyPage:
+            games = paginator.page(paginator.num_pages)
+
+        latest_game_list = games.object_list
+
+        # build a html posts list with the paginated posts
+        games_list_html = loader.render_to_string(
+            'groups/games_list.html',
+            {
+                'latest_game_list': latest_game_list,
+                'group': self.group_object,
+            }
+        )
+        additional_html = "<script>var loop_number=" + str(int(page) * results_per_page - results_per_page) + "</script>"
+        # package output data and return it as a JSON object
+        output_data = {
+            'games_list_html': additional_html + games_list_html,
+            'has_next': games.has_next()
+        }
+        test_data = JsonResponse(output_data).content
+
+        address = reverse('groups:lazy_load_posts_tournament', kwargs={"group_id": self.group_object.id, "tournament_id": self.tournament_2.id})
+        address = address + "?q=" + self.videogame_1.name
+        response = self.client.post(address, {
+            "page": page
+        })
+
+        self.assertEqual(test_data, response.content)
+        # Check that the response is 200.
+        self.assertEqual(response.status_code, 200)
+
+    def test_6_(self):
+        self.user_3 = User.objects.create(username='testuser3')
+        self.user_3.set_password("12345")
+        self.user_3.save()
+
+        # create a second group
+        group_name = "test_group_2"
+        invite_only = True
+        members_can_invite = True # TODO: Can members really invite? Currently this is an admin page
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object_2 = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_2 = Wallet.objects.create(
+            profile=self.user_3.profile,
+            group=self.group_object_2,
+            status=Wallet.active
+        )
+
+        # Log user in
+        self.client.login(username='testuser', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_2.status, Wallet.active)
+
+        address = reverse('groups:lazy_load_posts_tournament', kwargs={"group_id": self.group_object_2.id, "tournament_id": self.tournament_2.id})
+        response = self.client.post(address, {
+            "page": 2
+        })
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+
+
 
 
 class TournamentListViewTests(TestCase):
@@ -3712,16 +3867,29 @@ class MembersPageTests(TestCase):
 
         self.assertEqual(non_admin_wallet.status, Wallet.blocked_by_group)
 
+
+# TODO: Add "add game" to the tournament page
 class TournamentViewTests(TestCase):
-    # This page shows details of a tournament and any games in that tournament.
+    # This page shows details of a tournament and any games in that tournament. It also allows admins to edit the
+    # tournament
     # ----
-    # The correct tournament object should be passed through context and a list of 12 Match Betting Groups associated with
-    # that tournament in order (most recent first). Only users with an active wallet should be able to access this
+    # The correct tournament object should be passed through context and a list of 12 Match Betting Groups associated
+    # with that tournament in order (most recent first). Only users with an active wallet should be able to access this
     # group, everyone else should get a 404.
-    #
-    # Check that a user is a member of the group needs to be done in lazy load too
+    # Admins can make a change to dates, status, twitch_url or videogame. Only admins can make changes, not standard
+    # users.
     # ----
-    # Test 1:
+    # Test 1: Users from a different group cannot access this page
+    # Test 2: Ensure that admin and non admin users with active wallets can access the page
+    # Test 3: Check the correct Match Betting Groups get passed as the "latest_game_list"
+    # Test 4: check that the correct tournament is passed as the "tournament" variable
+    # Test 5: Ensure non-admin users cannot make any admin commands
+    # Test 6: Check that an admin can successfully change the date of the tournament
+    # Test 7: Check that an admin can successfully change the status of the tournament
+    # Test 8: Check that an admin CANNOT change the status of the tournament to a status not in the models status list
+    # Test 9: Check that an admin can successfully change the twitch_url of the tournament
+    # Test 10: Check that an admin can successfully change the videogame of the tournament
+
 
     def setUp(self):
         # Every test needs a client.
@@ -3735,10 +3903,6 @@ class TournamentViewTests(TestCase):
         self.non_admin_user = User.objects.create(username='testuser_nonadmin')
         self.non_admin_user.set_password('12345')
         self.non_admin_user.save()
-
-        self.founder = User.objects.create(username='testuser_founder')
-        self.founder.set_password('12345')
-        self.founder.save()
 
         # create a group
         group_name = "test_group_1"
@@ -3771,12 +3935,1054 @@ class TournamentViewTests(TestCase):
             status=Wallet.active,
             admin=False
         )
-        self.wallet_founder = Wallet.objects.create(
-            profile=self.founder.profile,
+
+        # Create a videogame
+        self.videogame_1 = Videogame.objects.create(
+            name="LOL"
+        )
+        self.videogame_2 = Videogame.objects.create(
+            name="SC2"
+        )
+
+        self.tournament_start_datetime = timezone.now() - timezone.timedelta(days=1)
+        self.tournament_end_datetime = timezone.now() + timezone.timedelta(days=1)
+        self.tournament_status = Tournament.ongoing
+
+        self.tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=self.tournament_start_datetime,
+            end_datetime=self.tournament_end_datetime,
+            videogame=self.videogame_1
+        )
+
+        # Create 15 tournaments and append them to an array
+        self.tournament_1_matches = []
+        self.match_dict = {}
+        for x in range(1, 16):
+            y = Match.objects.create(
+                user_a=self.admin_user.profile,
+                user_b=self.non_admin_user.profile,
+                start_datetime=timezone.now() + timezone.timedelta(hours=x),
+                tournament=self.tournament_1
+            )
+            g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+            self.match_dict["match_{0}".format(x)] = g
+            self.tournament_1_matches.append(g)
+
+        self.url = 'groups:tournament_view'
+
+    def test_1_non_active_or_associated_users_404(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+        self.client.logout()
+
+        # Create a new user, with no wallet at all
+        self.unassociated_user = User.objects.create(username='unassociated_user')
+        self.unassociated_user.set_password('12345')
+        self.unassociated_user.save()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='unassociated_user', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_2_active_admin_plus_nonadmin_200(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+        self.client.logout()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+    def test_3_latest_game_list(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        latest_game_list = response.context['latest_game_list']
+
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(list(latest_game_list), self.tournament_1_matches[:12])
+
+    def test_4_tournament_variable(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        tournament = response.context['tournament']
+
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(self.tournament_1, tournament)
+
+    # TODO: Add error messages? Form is not passed through context currently so errors will not show.
+    def test_5_nonadmin_cannot_make_changes(self):
+        # Log user in to non-admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        response = self.client.post(address, {
+            "form_name": "date_form",
+            "tournament_start_datetime": "21:39 - 17/02/2019",
+            "tournament_end_datetime": "21:39 - 17/03/2020"
+        })
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertEqual(refreshed_tournament.start_datetime, self.tournament_start_datetime)
+        self.assertEqual(refreshed_tournament.end_datetime, self.tournament_end_datetime)
+
+    def test_6_admin_can_change_date(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        tournament_start_datetime = "21:39 - 17/02/2019"
+        tournament_end_datetime = "21:39 - 17/03/2020"
+
+        response = self.client.post(address, {
+            "form_name": "date_form",
+            "tournament_start_datetime": tournament_start_datetime,
+            "tournament_end_datetime": tournament_end_datetime
+        })
+
+        # Convert string datetime's to python datetime's
+        tz = timezone.get_current_timezone()
+        tournament_start_datetime_python = tz.localize(datetime.strptime(tournament_start_datetime, '%H:%M - %d/%m/%Y'))
+        tournament_end_datetime_python = tz.localize(datetime.strptime(tournament_end_datetime, '%H:%M - %d/%m/%Y'))
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertEqual(refreshed_tournament.start_datetime, tournament_start_datetime_python)
+        self.assertEqual(refreshed_tournament.end_datetime, tournament_end_datetime_python)
+
+    def test_7_admin_can_change_status(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        tournament_status = "Ongoing"
+
+        response = self.client.post(address, {
+            "form_name": "status_form",
+            "status": tournament_status
+        })
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertEqual(refreshed_tournament.status, tournament_status)
+
+    def test_8_admin_cannot_change_status_non_standard(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        tournament_status = "Test Status"
+
+        response = self.client.post(address, {
+            "form_name": "status_form",
+            "status": tournament_status
+        })
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertNotEqual(refreshed_tournament.status, tournament_status)
+
+    def test_9_admin_can_change_url(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        url = "https://www.twitch.tv/shroud"
+
+        response = self.client.post(address, {
+            "form_name": "url_form",
+            "url": url
+        })
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertEqual(refreshed_tournament.twitch_url, url)
+
+    def test_10_admin_can_change_videogame(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "tournament_id": self.tournament_1.id})
+
+        # Make admin command
+        videogame = self.videogame_2
+
+        response = self.client.post(address, {
+            "form_name": "videogame_form",
+            "videogame_id": self.videogame_2.id
+        })
+
+        refreshed_tournament = Tournament.objects.get(id=self.tournament_1.id)
+
+        self.assertEqual(refreshed_tournament.videogame, videogame)
+
+
+# TODO: Test that wallet is returned in all views where needed
+class CompletedGameListTests(TestCase):
+    # This page shows any game with a status indicating it has completed. The games are fed from the view as a list. The
+    # games can be filtered by videogame. The list has most recent games first. The list should be paginated.
+    # The statuses are:
+        # "finished",
+        # "finished_not_confirmed",
+        # "finished_confirmed",
+        # "finished_paid"
+    # ----
+    # Test 1: Test that non active users or unassociated users 404
+    # Test 2: Test that active admins and active users get response code 200
+    # Test 3: Test that the list returns the correct values
+    # Test 4: Test that the list can be filtered
+    # Test 5:
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=True
+        )
+
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False
+        )
+
+        # Create a videogame
+        self.videogame_1 = Videogame.objects.create(
+            name="LOL"
+        )
+        self.videogame_2 = Videogame.objects.create(
+            name="SC2"
+        )
+
+        self.tournament_start_datetime = timezone.now() - timezone.timedelta(days=1)
+        self.tournament_end_datetime = timezone.now() + timezone.timedelta(days=1)
+        self.tournament_status = Tournament.ongoing
+
+        self.tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=self.tournament_start_datetime,
+            end_datetime=self.tournament_end_datetime,
+            videogame=self.videogame_1
+        )
+        self.tournament_2 = Tournament.objects.create(
+            name="tournament_2",
+            owning_group=self.group_object,
+            start_datetime=self.tournament_start_datetime,
+            end_datetime=self.tournament_end_datetime,
+            videogame=self.videogame_2
+        )
+
+        # Create 15 tournaments and append them to an array
+        self.tournament_matches = []
+        self.match_dict = {}
+        for x in range(1, 16):
+            y = Match.objects.create(
+                user_a=self.admin_user.profile,
+                user_b=self.non_admin_user.profile,
+                start_datetime=timezone.now() + timezone.timedelta(hours=x),
+                tournament=self.tournament_1
+            )
+            g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+            self.match_dict["match_{0}".format(x)] = g
+            self.tournament_matches.append(g)
+
+        y = Match.objects.create(
+            user_a=self.admin_user.profile,
+            user_b=self.non_admin_user.profile,
+            start_datetime=timezone.now() + timezone.timedelta(hours=16),
+            tournament=self.tournament_1,
+            status=Match.finished
+        )
+        g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+        self.match_dict["match_{0}".format(16)] = g
+        self.tournament_matches.append(g)
+
+        y = Match.objects.create(
+            user_a=self.admin_user.profile,
+            user_b=self.non_admin_user.profile,
+            start_datetime=timezone.now() + timezone.timedelta(hours=18),
+            tournament=self.tournament_2,
+            status=Match.finished_not_confirmed
+        )
+        g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+        self.match_dict["match_{0}".format(17)] = g
+        self.tournament_matches.append(g)
+
+        y = Match.objects.create(
+            user_a=self.admin_user.profile,
+            user_b=self.non_admin_user.profile,
+            start_datetime=timezone.now() + timezone.timedelta(hours=17),
+            tournament=self.tournament_1,
+            status=Match.finished_confirmed
+        )
+        g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+        self.match_dict["match_{0}".format(18)] = g
+        self.tournament_matches.append(g)
+
+        y = Match.objects.create(
+            user_a=self.admin_user.profile,
+            user_b=self.non_admin_user.profile,
+            start_datetime=timezone.now() + timezone.timedelta(hours=19),
+            tournament=self.tournament_1,
+            status=Match.finished_paid
+        )
+        g = MatchBettingGroup.objects.get(match=y, group=self.group_object)
+        self.match_dict["match_{0}".format(19)] = g
+        self.tournament_matches.append(g)
+
+        self.url = 'groups:completed_games_list_view'
+
+    def test_1_non_active_or_associated_users_404(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+        self.client.logout()
+
+        # Create a new user, with no wallet at all
+        self.unassociated_user = User.objects.create(username='unassociated_user')
+        self.unassociated_user.set_password('12345')
+        self.unassociated_user.save()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='unassociated_user', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_2_active_admin_plus_nonadmin_200(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+        self.client.logout()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+    def test_3_latest_game_list(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        latest_game_list = response.context['latest_game_list']
+
+        new_latest_game_list = [
+            self.tournament_matches[15],
+            self.tournament_matches[17],
+            self.tournament_matches[16],
+            self.tournament_matches[18]
+        ]
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(list(latest_game_list), new_latest_game_list)
+
+    def test_4_latest_game_list_filter(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id}) + "?q=LOL"
+
+        # Send the get request
+        response = self.client.get(address)
+
+        latest_game_list = response.context['latest_game_list']
+
+        new_latest_game_list = [
+            self.tournament_matches[15],
+            self.tournament_matches[17],
+            self.tournament_matches[18]
+        ]
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(list(latest_game_list), new_latest_game_list)
+
+
+class MatchViewTests(TestCase):
+    # This page displays a match betting group for a particular group. The user is returned:
+        # The Match Betting Group object
+        # Their bets made on the match
+        # All bets made on the match
+        # The total amount bet on the match
+    # The page should also let admins - of the group who created the game - make changes to the match
+    # ----
+    # Test 1: Test that non active users or unassociated users 404
+    # Test 2: Test that active admins and active users get response code 200
+    # Test 3: Test that the correct match betting group is returned
+    # Test 4: Test that the users bets are correctly returned
+    # Test 5: Test that all bets associated with the MBG are returned
+    # Test 6: Test that a non admin cannot make changes
+    # Test 7: Test that an admin from another group with an active MBG for the match (while not being the
+    #       "owning group") cannot make changes to the match
+    # Test 8: Test that an admin can change the date and duration successfully
+    # Test 9: Test that an admin can change the status successfully
+    # Test 10: Test that an admin cannot change the status to a non standard status i.e. one on the status array within
+    #       the Match model
+    # Test 11: Test that an admin can successfully set the winner of a match
+
+    def setUp(self):
+        # Every test needs a client.
+        self.client = Client()
+
+        # Create admin and non-admin users
+        self.admin_user = User.objects.create(username='testuser_admin')
+        self.admin_user.set_password('12345')
+        self.admin_user.save()
+
+        self.non_admin_user = User.objects.create(username='testuser_nonadmin')
+        self.non_admin_user.set_password('12345')
+        self.non_admin_user.save()
+
+        self.match_user_1 = User.objects.create(username='match_user_1')
+        self.match_user_1.set_password('12345')
+        self.match_user_1.save()
+
+        self.match_user_2 = User.objects.create(username='match_user_2')
+        self.match_user_2.set_password('12345')
+        self.match_user_2.save()
+
+        # create a group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        self.group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+        # TODO: Test that a user cannot make a bet with funds they do not have - Model test
+        # Create wallet between the user and group
+        self.wallet_admin = Wallet.objects.create(
+            profile=self.admin_user.profile,
             group=self.group_object,
             status=Wallet.active,
             admin=True,
-            founder=True
+            withdrawable_bank=1000
         )
 
-        self.url = 'groups:groupMembers'
+        self.wallet_non_admin = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False,
+            withdrawable_bank=1000
+        )
+
+        self.wallet_match_user_1 = Wallet.objects.create(
+            profile=self.match_user_1.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False,
+            withdrawable_bank=1000
+        )
+
+        self.wallet_match_user_2 = Wallet.objects.create(
+            profile=self.match_user_2.profile,
+            group=self.group_object,
+            status=Wallet.active,
+            admin=False,
+            withdrawable_bank=1000
+        )
+
+        # Create a videogame
+        self.videogame_1 = Videogame.objects.create(
+            name="LOL"
+        )
+        self.videogame_2 = Videogame.objects.create(
+            name="SC2"
+        )
+
+        self.tournament_start_datetime = timezone.now() - timezone.timedelta(days=1)
+        self.tournament_end_datetime = timezone.now() + timezone.timedelta(days=1)
+        self.tournament_status = Tournament.ongoing
+
+        self.tournament_1 = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=self.tournament_start_datetime,
+            end_datetime=self.tournament_end_datetime,
+            videogame=self.videogame_1
+        )
+
+        self.match_1_start_datetime = timezone.now() - timezone.timedelta(minutes=1)
+        self.match_1_duration = timezone.timedelta(minutes=2)
+
+        # Create 15 tournaments and append them to an array
+        self.match_1 = Match.objects.create(
+            user_a=self.match_user_1.profile,
+            user_b=self.match_user_2.profile,
+            start_datetime=self.match_1_start_datetime,
+            tournament=self.tournament_1,
+            estimated_duration=self.match_1_duration
+        )
+        self.match_1_betting_group = MatchBettingGroup.objects.get(match=self.match_1, group=self.group_object)
+
+        # Create 10 bets and append them to an array
+        self.all_bets = []
+
+        for x in range(1, 11):
+            y = Bet.objects.create(
+                match_betting_group=self.match_1_betting_group,
+                wallet=self.wallet_non_admin,
+                amount=x*3,
+                chosen_user=self.match_user_1.profile
+            )
+            self.all_bets.append(y)
+
+        self.user_bet_1 = Bet.objects.create(
+            match_betting_group=self.match_1_betting_group,
+            wallet=self.wallet_admin,
+            amount=10,
+            chosen_user=self.match_user_1.profile
+        )
+        self.all_bets.append(self.user_bet_1)
+        self.user_bet_2 = Bet.objects.create(
+            match_betting_group=self.match_1_betting_group,
+            wallet=self.wallet_admin,
+            amount=10,
+            chosen_user=self.match_user_2.profile
+        )
+        self.all_bets.append(self.user_bet_2)
+
+        self.admin_user_bets = [self.user_bet_1, self.user_bet_2]
+
+        self.url = 'groups:matchView'
+
+    def test_1_non_active_or_associated_users_404(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        self.wallet_admin.status = Wallet.deactivated
+        self.wallet_admin.save()
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+        self.client.logout()
+
+        # Create a new user, with no wallet at all
+        self.unassociated_user = User.objects.create(username='unassociated_user')
+        self.unassociated_user.set_password('12345')
+        self.unassociated_user.save()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='unassociated_user', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 404)
+
+    def test_2_active_admin_plus_nonadmin_200(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+        self.client.logout()
+
+        # Log user in to unassociated_user account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Send the get request
+        response = self.client.get(address)
+
+        # Check that the response is 404
+        self.assertEqual(response.status_code, 200)
+
+    def test_3_match_betting_group(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        game_bgg = response.context['game_bgg']
+
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(game_bgg, self.match_1_betting_group)
+
+    def test_4_user_bets(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        userbets = response.context['userbets']
+
+        # Check that each match is in the latest_game_list variable in the correct order
+        self.assertEqual(list(userbets), self.admin_user_bets)
+
+    def test_5_total_bet(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Send the get request
+        response = self.client.get(address)
+
+        total_bet = response.context['total_bet']
+
+        calculated_total_bet = 0
+        for bet in self.all_bets:
+            calculated_total_bet += bet.amount
+
+        # Check that the total amount calculated in the view is correct
+        self.assertEqual(total_bet, calculated_total_bet)
+
+    def test_6_nonadmin_cannot_make_changes(self):
+        # Log user in to non-admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        response = self.client.post(address, {
+            "form_name": "date_form",
+            "match_start_datetime": "21:39 - 17/02/2019",
+            "match_duration": "20"
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.start_datetime, self.match_1_start_datetime)
+        self.assertEqual(refreshed_match_1.estimated_duration, self.match_1_duration)
+
+    def test_7_admin_from_other_group_cannot_make_changes(self):
+        # Log user in to non-admin account
+        self.client.login(username='testuser_nonadmin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        # Create a second group where the nonadmin user is an admin
+        group_name = "test_group_2"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        new_group = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+        # Create a wallet for the nonadmin user and the new group
+        new_wallet = Wallet.objects.create(
+            profile=self.non_admin_user.profile,
+            group=new_group,
+            status=Wallet.active,
+            admin=True,
+            withdrawable_bank=1000
+        )
+
+        # Create a mbg for the new group
+        new_mbg = MatchBettingGroup.objects.create(match=self.match_1, group=new_group)
+
+        address = reverse(self.url, kwargs={'group_id': new_group.id, "betting_group_id": new_mbg.id})
+
+        # Make admin command
+        response = self.client.post(address, {
+            "form_name": "date_form",
+            "match_start_datetime": "21:39 - 17/02/2019",
+            "match_duration": "20"
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.start_datetime, self.match_1_start_datetime)
+        self.assertEqual(refreshed_match_1.estimated_duration, self.match_1_duration)
+
+    def test_8_admin_can_change_date(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        match_start_datetime = "21:39 - 17/02/2019"
+        match_duration = 20
+
+        # Make admin command
+        response = self.client.post(address, {
+            "form_name": "date_form",
+            "match_start_datetime": match_start_datetime,
+            "match_duration": match_duration
+        })
+
+        # Convert string datetime's to python datetime's
+        tz = timezone.get_current_timezone()
+        match_start_datetime_python = tz.localize(datetime.strptime(match_start_datetime, '%H:%M - %d/%m/%Y'))
+        match_duration_python = timezone.timedelta(minutes=match_duration)
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.start_datetime, match_start_datetime_python)
+        self.assertEqual(refreshed_match_1.estimated_duration, match_duration_python)
+
+    def test_9_admin_can_change_status(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        match_status = Match.finished
+
+        response = self.client.post(address, {
+            "form_name": "status_form",
+            "status": match_status
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.status, match_status)
+
+    def test_10_admin_cannot_change_status_non_standard(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url,
+                          kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        match_status = "Test Status"
+
+        response = self.client.post(address, {
+            "form_name": "status_form",
+            "status": match_status
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertNotEqual(refreshed_match_1.status, match_status)
+
+    def test_11_admin_can_set_winner(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        winner_a = 1
+
+        response = self.client.post(address, {
+            "form_name": "winner_form",
+            "winner": winner_a
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.winner, Match.a_winner)
+
+        # Make admin command
+        winner_b = 2
+
+        response = self.client.post(address, {
+            "form_name": "winner_form",
+            "winner": winner_b
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.winner, Match.b_winner)
+
+        # Make admin command
+        not_decided = 3
+
+        response = self.client.post(address, {
+            "form_name": "winner_form",
+            "winner": not_decided
+        })
+
+        refreshed_match_1 = Match.objects.get(id=self.match_1.id)
+
+        self.assertEqual(refreshed_match_1.winner, Match.not_decided)
+
+    def test_12_set_winner_non_standard(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id, "betting_group_id": self.match_1_betting_group.id})
+
+        # Make admin command
+        winner_a = 6
+
+        response = self.client.post(address, {
+            "form_name": "winner_form",
+            "winner": winner_a
+        })
+
+        # Check that the response is 404.
+        self.assertEqual(response.status_code, 404)
+

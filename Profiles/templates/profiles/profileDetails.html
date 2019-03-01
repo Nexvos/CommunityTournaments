@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+
+{% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
+
+{% block extracss %}
+    {% load static %}
+    <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
+    <meta charset="UTF-8">
+{% endblock %}
+
+{% block jumbotron %}
+
+
+    {% include 'profiles/profileDetailsNav.html' %}
+
+{% endblock %}
+
+
+{% block content %}
+
+<style>
+{# Image selector css #}
+.nopad {
+	padding-left: 0 !important;
+	padding-right: 0 !important;
+}
+/*image gallery*/
+.image-checkbox {
+	cursor: pointer;
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	border: 4px solid transparent;
+	margin-bottom: 0;
+	outline: 0;
+}
+.image-checkbox input[type="checkbox"] {
+	display: none;
+}
+
+.image-checkbox-checked {
+	border-color: #4783B0;
+}
+.image-checkbox .fa {
+  position: absolute;
+  color: #4A79A3;
+  background-color: #fff;
+  padding: 10px;
+  top: 0;
+  right: 0;
+}
+.image-checkbox-checked .fa {
+  display: block !important;
+}
+
+{# Colour picker css #}
+.pallette {
+  height: 250px;
+  width: 100%;
+  background-color: red;
+  background-image:
+    linear-gradient(0deg, black, rgba(0,0,0,0)),
+    linear-gradient(90deg, white, rgba(255,255,255,0))
+    ;
+  position: relative;
+}
+
+.pallette:hover {
+  cursor: pointer;
+}
+
+.slider-bar {
+  margin: 1em 0;
+  height: 1em;
+  border-radius: 0.3em;
+
+  border: 1px solid #ccc;
+  position: relative;
+}
+
+input[type="range"] {
+  margin: 1em 0;
+  width: 100%;
+  -webkit-appearance: none;
+  outline: none;
+  background-image: linear-gradient(to right, red, yellow, hsl(120, 100%, 50%), cyan, blue, magenta, red);
+  background-color: #fff;
+  height: 2em;
+  border-radius: .5em;
+  box-sizing: border-box;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 2em;
+  height: 2em;
+  background: #333;
+  cursor: pointer;
+  border-radius: .3em;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+.result {
+  text-align: center;
+  font-size: 2em;
+  padding: 2em 0;
+  background-color: hsl(0, 100%, 50%);
+  color: hsl(180, 100%, 50%);
+}
+
+.circle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1em;
+  height: 1em;
+  background-color: transparent;
+  border: 2px solid hsl(180, 100%, 50%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+</style>
+
+<div class="betting-title rounded row" style=" margin-right: 0; margin-left: 0;">
+    <div class="col-sm-12">
+        <h4 class="display-4" style="font-size: 2.3rem;font-weight: 500; margin-bottom: .25rem;">Current Details </h4>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4 offset-md-2">
+        <p><h5>Current Display Picture:</h5></p>
+        <img src="{{ image_url }}"/>
+    </div>
+    <div class="col-md-4">
+        <p><h5>Current nickname:</h5> {{ user_nickname }}</p>
+        <p><h5>Current colour:</h5> {{ user_colour }}</p>
+        <p><h5>Current location:</h5> {{ location }}</p>
+    </div>
+</div>
+<br>
+
+<div class="row">
+    <div class="col-sm-8">
+        <form method='POST' action='{% url "profiles:profileDetailsDefault" %}'>{% csrf_token %}
+            <div class="card" style="border: 1px solid #b5b5b5; margin-bottom: 1rem;">
+                <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> Change Default Picture</h5>
+                <div class="card-body row" style="max-height: 500px; overflow: overlay; margin-left: 0; margin-right: 0;">
+
+                   {% for image in possible_images %}
+                      <div class="col-xs-12 col-sm-6 col-md-4 col-lg-3 nopad text-center">
+                        <div class="image-checkbox">
+                          <img class="img-responsive" style="max-width: 100%;" src={{ image }} />
+                          <input type="checkbox" name="image" value="{{ image }}" />
+                          <i class="fa fa-check hidden" style="display: none; border: 1px black solid;"></i>
+                        </div>
+                      </div>
+                    {% endfor %}
+
+                </div>
+                <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">
+                  <button class="btn btn-primary btn-lg btn-block card-footer-btn">
+                      Save
+                  </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="col-sm-4">
+        <div class="card" style="border: 1px solid #b5b5b5; margin-bottom: 1rem;">
+            <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> Change Default Colour</h5>
+            <div class="card-body">
+                <div class="color-picker">
+                    <div class="pallette">
+                        <i class="circle"></i>
+                    </div>
+                    <form>
+                        <div>
+                          <input type="range" min="0" max="360" value="0">
+                        </div>
+                        <div class="result">
+                          hsl(0, 100%, 50%)
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">
+              <button class="btn btn-primary btn-lg btn-block card-footer-btn">
+                  Save
+              </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// image gallery
+// init the state from the input
+$(".image-checkbox").each(function () {
+  if ($(this).find('input[type="checkbox"]').first().attr("checked")) {
+    $(this).addClass('image-checkbox-checked');
+  }
+  else {
+    $(this).removeClass('image-checkbox-checked');
+  }
+});
+
+// sync the state to the input
+$(".image-checkbox").on("click", function (e) {
+    $('.image-checkbox').removeClass('image-checkbox-checked');
+    $(':checkbox').prop('checked', false);
+    $(this).toggleClass('image-checkbox-checked');
+    var $checkbox = $(this).find('input[type="checkbox"]');
+    $checkbox.prop("checked", !$checkbox.prop("checked"))
+
+    e.preventDefault();
+});
+
+// Colour Picker
+document.addEventListener("DOMContentLoaded", function() {
+  let slider = document.querySelector("input[type='range']");
+  let pallette = document.querySelector(".pallette");
+  let result = document.querySelector(".result");
+  let circle = document.querySelector(".circle");
+  let theColor = {h:0, s: 100, l: 50};
+
+  function getColors() {
+    return {
+      color: `hsl(${theColor.h}, ${theColor.s}%, ${theColor.l}%)`,
+      contrastColor: `hsl(${theColor.h - 180}, 100%, ${100 -theColor.l}%)`
+    }
+  }
+
+  slider.addEventListener("input",function() {
+    let paletteColor = `hsl(${this.value}, 100%, 50%)`;
+    pallette.style.backgroundColor = paletteColor;
+
+    theColor.h = this.value;
+
+    let {color, contrastColor} = getColors();
+    result.innerHTML = color;
+    result.style.backgroundColor = color;
+    result.style.color = contrastColor;
+    circle.style.borderColor = contrastColor;
+  });
+
+  pallette.addEventListener("click", function(ev) {
+    let saturation = Math.round(100 * (ev.offsetX / this.clientWidth));
+    // weird experimental math going on here
+    let lightness = Math.round((50 * (1- (ev.offsetY / this.clientHeight))) * (2 - (saturation/100)));
+
+    circle.style.top = ev.offsetY + "px";
+    circle.style.left = ev.offsetX + "px";
+
+    theColor = {h: slider.value, s: saturation, l: lightness};
+
+    let {color, contrastColor} = getColors();
+    result.innerHTML = color;
+    result.style.backgroundColor = color;
+    result.style.color = contrastColor;
+    circle.style.borderColor = contrastColor;
+  });
+});
+</script>
+{% endblock %}
+
+
+

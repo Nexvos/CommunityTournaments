@@ -55,7 +55,7 @@ svg {
                 {% endifequal %}
             </div>
             <div class="caption">
-                <h4 class="group inner list-group-item-heading" style="font-size:1.25rem; margin-top: 0.5rem;"><a href="{% url 'groups:detail' group_id=group.id betting_group_id=game_betting_group.id %}">
+                <h4 class="group inner list-group-item-heading" style="font-size:1.25rem; margin-top: 0.5rem;"><a href="{% url 'groups:matchView' group_id=group.id betting_group_id=game_betting_group.id %}">
                     {% if game_betting_group.match.team_a %}{{ game_betting_group.match.team_a }}{% else %}{{ game_betting_group.match.user_a }}{% endif %} vs {% if game_betting_group.match.team_b %}{{ game_betting_group.match.team_b }}{% else %}{{ game_betting_group.match.user_b }}{% endif %}</a></h4>
 
 

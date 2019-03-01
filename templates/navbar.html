@@ -1,17 +1,17 @@
 {% load static %}
 {% url 'groups:home' as home %}
-
+{% url 'profiles:profileDetailsDefault' as profile_details %}
 
    <!-- Static navbar -->
 <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top" style="z-index:1; padding-bottom: 0.25rem; padding-top: 0.25rem; ">
-      <a class="navbar-brand strokeme" href="#" style="font-size: 100%;">eSports Betting</a>
+      <a class="navbar-brand strokeme" href="#" style="font-size: 100%;">eSports Groups</a>
       <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav mr-auto">
                   <li class="nav-item {% ifequal  request.get_full_path home %} active {% endifequal %}">
                     <a class="nav-link" href="{{ home }}">Home <span class="sr-only">(current)</span></a>
                   </li>
                   <li class="nav-item {% ifequal  request.get_full_path betting_index %} active {% endifequal %}">
-                    <a class="nav-link" href="#">Options</a>
+                    <a class="nav-link" href="{{ profile_details }}">Profile</a>
                   </li>
 
             </ul>

@@ -30,6 +30,13 @@
               </button>
             </div>
         </div>
+        {% ifnotequal query 'None' %}
+            <p style="margin: 0.5rem; color: darkred; font-weight: 600;">Currently searching for "{{ query }}"</p>
+        {% endifnotequal %}
+        <br>
+        <div id="number_of_members">
+            <h5 style="text-align: center;">{{ model_array|length }} / {{ group.max_users }} users</h5>
+        </div>
     </div>
     <div class="col-md-9">
         <ul class="list-group" id="myUL">
@@ -51,7 +58,7 @@
                 {% if wallet.admin == True %}
 
                     <div class="members_admin_controls" style="margin-left: 0.2rem;">
-                        <div data-toggle="tooltip" data-placement="bottom" title="Click to toggle admin panel." style="display: inline-block; margin: -0.2rem; padding: 0.2rem; border-right: 1px solid gray;">
+                        <div data-toggle="tooltip" data-placement="bottom" title="Click to toggle admin panel." style="display: inline-block; margin: -0.2rem; padding: 0.2rem;">
                             <span data-loopcounter="{{ forloop.counter }}" class="unhide_admin" id="unhide_admin{{ forloop.counter }}">
                                 <i class="fas fa-angle-double-left"></i>
                             </span>
@@ -71,7 +78,7 @@
                                       value="promote_to_admin"
                                       style="
                                         font-size: 82%;
-                                        background-color: darkgray;
+                                        background-color: #4aa0b0;
                                         color: white;
                                         font-weight: 500;
                                         padding: initial;
@@ -95,7 +102,7 @@
                                       value="remove_admin"
                                       style="
                                         font-size: 82%;
-                                        background-color: darkgray;
+                                        background-color: #4aa0b0;
                                         color: white;
                                         font-weight: 500;
                                         padding: initial;
@@ -119,7 +126,7 @@
                                       value="remove_user"
                                       style="
                                         font-size: 82%;
-                                        background-color: darkgray;
+                                        background-color: #4aa0b0;
                                         color: white;
                                         font-weight: 500;
                                         padding: initial;
@@ -141,7 +148,7 @@
                                       value="ban_user"
                                       style="
                                         font-size: 82%;
-                                        background-color: darkgray;
+                                        background-color: #4aa0b0;
                                         color: white;
                                         font-weight: 500;
                                         padding: initial;

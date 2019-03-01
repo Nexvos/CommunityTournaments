@@ -288,26 +288,26 @@ def lazy_load_games(request, group_id, tournament_id=None):
     latest_game_list = MatchBettingGroup.objects.filter(Q(group__id=group_id), Q(status=MatchBettingGroup.active))
     query = request.GET.get('q')
     if tournament_id:
-        tournament = get_object_or_404(Tournament, id=tournament_id)
+        tournament = get_object_or_404(Tournament, id=tournament_id, owning_group=group)
     else:
         tournament = None
 
-    if query:
+    if tournament:
         latest_game_list = latest_game_list.filter(
             ~Q(match__status=Match.finished),
             ~Q(match__status=Match.finished_not_confirmed),
             ~Q(match__status=Match.finished_confirmed),
             ~Q(match__status=Match.finished_paid),
-            Q(match__tournament__videogame__name__iexact=query)
+            Q(match__tournament=tournament)
         ).order_by('match__start_datetime')
     else:
-        if tournament:
+        if query:
             latest_game_list = latest_game_list.filter(
                 ~Q(match__status=Match.finished),
                 ~Q(match__status=Match.finished_not_confirmed),
                 ~Q(match__status=Match.finished_confirmed),
                 ~Q(match__status=Match.finished_paid),
-                Q(match__tournament=tournament)
+                Q(match__tournament__videogame__name__iexact=query)
             ).order_by('match__start_datetime')
         else:
             latest_game_list = latest_game_list.filter(
@@ -316,6 +316,7 @@ def lazy_load_games(request, group_id, tournament_id=None):
                 ~Q(match__status=Match.finished_confirmed),
                 ~Q(match__status=Match.finished_paid)
             ).order_by('match__start_datetime')
+
 
     # use Django’s pagination
     # https://docs.djangoproject.com/en/dev/topics/pagination/
@@ -766,7 +767,6 @@ def groupMembers(request, group_id, page):
                 else:
                     form.add_error(None, "This is not a valid command.")
         else:
-            print("user is not admin")
             form.add_error(None, "You do not have admin status, so cannot make this command.")
 
     context = {
@@ -794,23 +794,79 @@ def tournament_view(request, tournament_id, group_id):
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    tournament = get_object_or_404(Tournament, id=tournament_id)
+    tournament = get_object_or_404(Tournament, id=tournament_id, owning_group=group)
+
     tournament_games = MatchBettingGroup.objects.filter(
         Q(group__id=group_id),
         Q(match__tournament__id=tournament_id)
     ).order_by('match__start_datetime')[:12]
 
-    # TODO: Test that groups can't access tournaments they're not a part of
+    videogames = Videogame.objects.all()
 
+    if request.method == "POST":
+        if wallet.admin:  # User must be an admin to make changes to the tournament
+            if 'form_name' in request.POST:
+                form_name = request.POST['form_name']
+                if form_name == "date_form":
+                    form_dict = {
+                        "tournament_start_datetime": request.POST['tournament_start_datetime'],
+                        "tournament_end_datetime": request.POST['tournament_end_datetime']
+                    }
+                    form = UpdateTournamentDateForm(form_dict)
+                    if form.is_valid():
+                        tournament_start_datetime = form.cleaned_data['tournament_start_datetime']
+                        tournament_end_datetime = form.cleaned_data['tournament_end_datetime']
+
+                        tournament.start_datetime = tournament_start_datetime
+                        tournament.end_datetime = tournament_end_datetime
+                        tournament.save()
+
+                if form_name == "status_form":
+                    form_dict = {
+                        "status": request.POST['status']
+                    }
+                    form = UpdateStatusForm(form_dict)
+                    if form.is_valid():
+                        status = form.cleaned_data['status']
+                        status_list = []
+                        for status_item in Tournament.available_statuses:
+                            status_list.append(status_item[0])
+                        if status in status_list:
+                            tournament.status = status
+                            tournament.save()
+
+                if form_name == "url_form":
+                    form_dict = {
+                        "url": request.POST['url']
+                    }
+                    form = UpdateUrlForm(form_dict)
+                    if form.is_valid():
+                        url = form.cleaned_data['url']
+                        tournament.twitch_url = url
+                        tournament.save()
+
+                if form_name == "videogame_form":
+                    form_dict = {
+                        "videogame_id": request.POST['videogame_id']
+                    }
+                    form = UpdateVideogameForm(form_dict)
+                    if form.is_valid():
+                        videogame_id = form.cleaned_data['videogame_id']
+
+                        videogame = get_object_or_404(Videogame, id=videogame_id)
+                        tournament.videogame = videogame
+                        tournament.save()
     context = {
         "group": group,
         "tournament": tournament,
         "latest_game_list": tournament_games,
-        'wallet': wallet
+        'wallet': wallet,
+        "videogames": videogames
     }
     return render(request, 'groups/tournament_view.html', context)
 
 
+# TODO: Paginate completed games
 @login_required(redirect_field_name="")
 def completed_game_list_view(request, group_id):
     # Set user to request.user
@@ -842,6 +898,7 @@ def completed_game_list_view(request, group_id):
         Q(match__status=Match.finished_confirmed) |
         Q(match__status=Match.finished_paid)
     ).order_by('match__start_datetime')
+
     context = {
         "group": group,
         "latest_game_list": completed_games,
@@ -851,7 +908,7 @@ def completed_game_list_view(request, group_id):
 
 
 @login_required(redirect_field_name="")
-def detail(request, betting_group_id, group_id):
+def match_view(request, betting_group_id, group_id):
     # Set user to request.user
     user = request.user
 
@@ -862,19 +919,73 @@ def detail(request, betting_group_id, group_id):
     except Wallet.DoesNotExist:
         raise Http404('You are not a member of this group.')
 
-    userbets = Bet.objects.all().filter(match_betting_group__id=betting_group_id, wallet=wallet)
+    userbets = Bet.objects.all().filter(match_betting_group__id=betting_group_id, wallet=wallet).order_by('created')
     game_bgg = get_object_or_404(MatchBettingGroup, pk=betting_group_id)
     qs = game_bgg.mbg_bets.all()
 
     total_bet = 0
     for bet in qs:
         total_bet += bet.amount
+    print(request.POST)
+    if request.method == "POST":
+        # The group must be the owning group to make changes to the match
+        if wallet.group == game_bgg.match.tournament.owning_group:
+            if wallet.admin:  # User must be an admin to make changes to the match
+                if 'form_name' in request.POST:
+                    form_name = request.POST['form_name']
+                    if form_name == "date_form":
+                        form_dict = {
+                            "match_start_datetime": request.POST['match_start_datetime'],
+                            "match_duration": request.POST['match_duration']
+                        }
+                        form = UpdateMatchDateForm(form_dict)
+                        if form.is_valid():
+                            match_start_datetime = form.cleaned_data['match_start_datetime']
+                            match_duration = form.cleaned_data['match_duration']
+
+                            game_bgg.match.start_datetime = match_start_datetime
+                            game_bgg.match.estimated_duration = timezone.timedelta(minutes=match_duration)
+                            game_bgg.match.save()
+
+                    if form_name == "status_form":
+                        form_dict = {
+                            "status": request.POST['status']
+                        }
+                        form = UpdateStatusForm(form_dict)
+                        if form.is_valid():
+                            status = form.cleaned_data['status']
+                            status_list = []
+                            for status_item in Match.available_statuses:
+                                status_list.append(status_item[0])
+                            print(status_list)
+                            if status in status_list:
+                                game_bgg.match.status = status
+                                game_bgg.match.save()
+
+                    if form_name == "winner_form":
+                        form_dict = {
+                            "winner": request.POST['winner']
+                        }
+                        form = UpdateWinnerForm(form_dict)
+                        if form.is_valid():
+                            winner = form.cleaned_data['winner']
+                            # winner =1 for a or 2 for b and 3 for not decided
+                            if winner == 1:
+                                game_bgg.match.winner = Match.a_winner
+                            elif winner == 2:
+                                game_bgg.match.winner = Match.b_winner
+                            elif winner == 3:
+                                game_bgg.match.winner = Match.not_decided
+                            else:
+                                raise Http404('Winner value invalid.')
+                            game_bgg.match.save()
+
     context = {
         'group': group,
         'game_bgg': game_bgg,
         'total_bet': total_bet,
-        'userbets':userbets,
+        'userbets': userbets,
         'wallet': wallet
-               }
-    return render(request, 'groups/game.html', context)
+    }
+    return render(request, 'groups/match.html', context)
 

@@ -15,7 +15,8 @@
     font-size: 1rem;
 }
 .list-group-item{
-    padding: .3rem 1rem;
+    padding: .4rem 1rem;
+    height: 2.4rem;
 }
 .carousel-caption{
     width: 100%;
@@ -224,14 +225,26 @@ label{
     white-space: nowrap;
     vertical-align: middle;
 }
+.member_label {
+    padding: .2rem .75rem;
+    line-height: 1.5;
+    border-radius: .25rem;
+    color: #17a2b8;
+    border: 1px solid #17a2b8;
+    display: inline-block;
+    font-weight: 400;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
 .members_admin_controls {
     font-size: 80%;
-    margin: -.3rem -1rem -.3rem 0;
-    line-height: 2.45;
-    background-color: gray;
-    border: 1px solid gray;
+    margin: -.4rem -1rem -.4rem 0;
+    line-height: 2.94;
+    background-color: #0c5460;
     display: inline-block;
-    border-radius: 0 .25rem .25rem 0;
+    border-radius: 0 .2rem .2rem 0;
     padding: .2rem .2rem;
     color: white;
 }

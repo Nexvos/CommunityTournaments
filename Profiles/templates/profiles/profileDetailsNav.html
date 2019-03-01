@@ -1,0 +1,28 @@
+{% load static %}
+{% url 'profiles:profileDetailsDefault' as default_profile_settings %}
+
+<style>
+    .nav-link.active_community {
+        background-color: #e9ecef !important;
+        border-color: #dee2e6 #b5b5b5 #e9ecef !important;
+        color:black;
+    }
+</style>
+<ul class="nav nav-tabs" style="padding-left: 10%; padding-right: 10%; background-color: #f6f6f6; border-bottom: 1px #b5b5b5 solid;">
+  <li class="nav-item" style="margin-left: 0rem;">
+    <a
+            class="nav-link{% ifequal request.path default_profile_settings %} active_community{% endifequal %}"
+            href="{{ default_profile_settings }}">
+        <i class="fas fa-user-tie"></i> &nbsp Default Profile Settings
+    </a>
+  </li>
+  {% for g in wallets %}
+      {% url 'profiles:profileDetailsGroup' group_id=g.group.id as group_page %}
+      <li class="nav-item" style="margin-left: 0rem;">
+        <a
+                class="nav-link{% ifequal request.path group_page %} active_community{% endifequal %}"
+                href="{{ group_page }}">{{ g.group.name }}
+        </a>
+      </li>
+  {% endfor %}
+</ul>

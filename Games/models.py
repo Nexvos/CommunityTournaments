@@ -6,6 +6,7 @@ from datetime import timedelta
 
 # Create your models here.
 
+
 class Videogame(models.Model):
     name = models.CharField(unique=True, max_length=30, default="LoL")
     api_videogame_id = models.IntegerField(unique=True, null=True, blank=True)
@@ -22,7 +23,7 @@ class Tournament(models.Model):
     api_tournament_id = models.IntegerField(unique=True, null=True, blank=True)
     api_modified_at = models.DateTimeField('api_modified_at',null=True, blank=True)
 
-    groups = models.ManyToManyField(CommunityGroup, related_name='group_tournaments')
+    groups = models.ManyToManyField(CommunityGroup, related_name='group_tournaments') # Do not use for now
 
     owning_group = models.ForeignKey(
         CommunityGroup,
@@ -60,6 +61,7 @@ class Tournament(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Match(models.Model):
     api_match_id = models.IntegerField(unique=True,blank=True,null=True)

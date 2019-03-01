@@ -59,6 +59,33 @@ class CreateTournamentForm(forms.Form):
 
         return cd
 
+
+class UpdateTournamentDateForm(forms.Form):
+    tournament_start_datetime = forms.DateTimeField(input_formats=['%H:%M - %d/%m/%Y'])
+    tournament_end_datetime = forms.DateTimeField(input_formats=['%H:%M - %d/%m/%Y'])
+    def clean(self):
+        cd = self.cleaned_data
+        start_date = cd.get('tournament_start_datetime')
+        end_date = cd.get('tournament_end_datetime')
+
+        if end_date < start_date:
+            self.add_error('tournament_end_datetime', "Your tournament end date is earlier than your tournament start date")
+
+        return cd
+
+class UpdateStatusForm(forms.Form):
+    status = forms.CharField(max_length=40)
+
+
+class UpdateUrlForm(forms.Form):
+    url = forms.URLField()
+
+class UpdateVideogameForm(forms.Form):
+    videogame_id = forms.IntegerField()
+
+class UpdateWinnerForm(forms.Form):
+    winner = forms.IntegerField()
+
 class CreateGameForm(forms.Form):
     tournament_id = forms.IntegerField()
     user_a = forms.IntegerField()
@@ -77,9 +104,16 @@ class CreateGameForm(forms.Form):
 
         return cd
 
+
+class UpdateMatchDateForm(forms.Form):
+    match_start_datetime = forms.DateTimeField(input_formats=['%H:%M - %d/%m/%Y'])
+    match_duration = forms.IntegerField()
+
+
 class BetForm(forms.Form):
     chosen_team = forms.CharField(max_length=200)
     amount = forms.DecimalField(max_digits=7, decimal_places=2, min_value=Decimal('0.01'))
+
 
 class ChatForm(forms.Form):
     chat_message = forms.CharField(max_length=1024)

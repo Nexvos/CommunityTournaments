@@ -4,20 +4,24 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from Groups.models import CommunityGroup
+import random
 
 # Create your models here.
 User = settings.AUTH_USER_MODEL
+
 
 def upload_location(instance, filename):
 
     location = instance.user.username
     return "%s/%s"%(location, filename)
 
+
 def hex_to_rgb(colour):
     rgb_str = str((tuple(int(colour[i:i + 2], 16) for i in (0, 2, 4))))
     rgb_str = rgb_str.rstrip(")")
     rgb_str = rgb_str.lstrip("(")
     return rgb_str
+
 
 def hex_to_rgb_whitened(colour):
     rgb_str = (tuple(int(colour[i:i + 2], 16) for i in (0, 2, 4)))
@@ -27,10 +31,15 @@ def hex_to_rgb_whitened(colour):
     whitened_value = whitened_value.lstrip("(")
     return whitened_value
 
+# The number of custom images held. Will allow users to randomly be assigned an image on sign_up
+number_of_custom_images = 32
+
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.PROTECT)
     location = models.CharField(max_length=120, null=True, blank=True)
-    picture = models.ImageField(upload_to=upload_location,null=True,blank=True)
+    nickname = models.CharField(max_length=20, null=True, blank=True)
+    picture_id = models.IntegerField(default=1, null=False, blank=False)
     colour = models.CharField(max_length=7, null=False, blank=False, default="D3D3D3")
     groups = models.ManyToManyField(
         CommunityGroup,
@@ -55,7 +64,8 @@ class Wallet(models.Model):
     group = models.ForeignKey(CommunityGroup, related_name='groups_wallet', blank=False, null=False, on_delete=models.PROTECT)
     withdrawable_bank = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     non_withdrawable_bank = models.DecimalField(max_digits=6, decimal_places=2, default=0)
-    picture = models.ImageField(upload_to=upload_location, null=True, blank=True)
+    nickname = models.CharField(max_length=20, null=True, blank=True)
+    picture_id = models.IntegerField(default=1, null=False, blank=False)
     colour = models.CharField(max_length=7, null=True, blank=True)
     ranking = models.IntegerField(default=0)
     founder = models.BooleanField(default=False, blank=False, null=False)
@@ -144,12 +154,15 @@ class Team(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        profile = Profile.objects.create(user=instance)
+        profile = Profile.objects.create(user=instance, picture_id=random.randint(0, number_of_custom_images))
 
 # Update the number of users in a community group after wallet creation
 @receiver(post_save, sender=Wallet)
 def update_number_of_community_users(sender, instance, created, **kwargs):
     if created:
+        instance.picture_id = instance.profile.picture_id
+        instance.save()
+
         community_group = instance.group
         number_of_users = len(community_group.groups_profile.all())
         community_group.total_number_users = number_of_users
