@@ -15,6 +15,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
+from django.contrib.staticfiles.templatetags.staticfiles import static
 
 User = get_user_model()
 # Create your views here.
@@ -615,27 +616,27 @@ def adminPageAddGames(request, group_id):
             game_duration = form.cleaned_data['game_duration']
             twitch_url = form.cleaned_data['twitch_url']
 
-            user_a = get_object_or_404(User, id=user_a_id)
-            user_b = get_object_or_404(User, id=user_b_id)
+            user_a = get_object_or_404(Wallet, id=user_a_id)
+            user_b = get_object_or_404(Wallet, id=user_b_id)
             tournament = get_object_or_404(Tournament, id=tournament_id)
 
             # Sort user_a and user_b alphabetically
             users = [user_a, user_b]
-            users = sorted(users, key=lambda x: x.username, reverse=False)
+            users = sorted(users, key=lambda x: x.profile.user.username, reverse=False)
             user_a = users[0]
             user_b = users[1]
 
-            group_profiles = group.groups_profile.all()
+            group_wallets = group.groups_wallet.all()
 
-            if user_a.profile not in group_profiles or user_a.profile not in group_profiles:
-                form.add_error(None, "On of the users selected is not part of this group.")
+            if user_a not in group_wallets or user_b not in group_wallets:
+                form.add_error(None, "One of the users selected is not part of this group.")
             elif tournament.owning_group != group:
                 form.add_error(None, "The tournament selected is not owned by this group.")
             else:
                 new_game = Match()
                 new_game.tournament = tournament
-                new_game.user_a = user_a.profile
-                new_game.user_b = user_b.profile
+                new_game.user_a = user_a
+                new_game.user_b = user_b
                 new_game.start_datetime = game_start_datetime
                 new_game.estimated_duration = timezone.timedelta(minutes=game_duration)
                 new_game.twitch_url = twitch_url
@@ -923,10 +924,16 @@ def match_view(request, betting_group_id, group_id):
     game_bgg = get_object_or_404(MatchBettingGroup, pk=betting_group_id)
     qs = game_bgg.mbg_bets.all()
 
+    image_user_a = "img/profile_pictures/picture_" + str(game_bgg.match.user_a.picture_id) + ".png"
+    static_image_user_a = static(image_user_a)
+
+    image_user_b = "img/profile_pictures/picture_" + str(game_bgg.match.user_b.picture_id) + ".png"
+    static_image_user_b = static(image_user_b)
+
     total_bet = 0
     for bet in qs:
         total_bet += bet.amount
-    print(request.POST)
+
     if request.method == "POST":
         # The group must be the owning group to make changes to the match
         if wallet.group == game_bgg.match.tournament.owning_group:
@@ -957,7 +964,7 @@ def match_view(request, betting_group_id, group_id):
                             status_list = []
                             for status_item in Match.available_statuses:
                                 status_list.append(status_item[0])
-                            print(status_list)
+
                             if status in status_list:
                                 game_bgg.match.status = status
                                 game_bgg.match.save()
@@ -985,7 +992,9 @@ def match_view(request, betting_group_id, group_id):
         'game_bgg': game_bgg,
         'total_bet': total_bet,
         'userbets': userbets,
-        'wallet': wallet
+        'wallet': wallet,
+        'image_user_a': static_image_user_a,
+        'image_user_b': static_image_user_b
     }
     return render(request, 'groups/match.html', context)
 

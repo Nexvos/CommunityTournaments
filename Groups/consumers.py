@@ -10,7 +10,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
-def remove_funds(user_wallet, amountBid, ):
+def remove_funds(user_wallet, amountBid):
     if user_wallet.non_withdrawable_bank >= amountBid:
         user_wallet.non_withdrawable_bank = user_wallet.non_withdrawable_bank - amountBid
         user_wallet.save()
@@ -61,8 +61,8 @@ class DataConsumer(AsyncWebsocketConsumer):
                 message = "nothing"
                 print(chosenTeam)
                 try:
-                    chosen_user = User.objects.get(username=chosenTeam)
-                    team = chosen_user.profile
+                    team = Wallet.objects.get(id=chosenTeam)
+                    # TODO: Teams might not work
                 except:
                     team = get_object_or_404(Team, name=chosenTeam)
                 user_wallet = Wallet.objects.get(profile=self.user.profile, group=self.match_betting_group.group)

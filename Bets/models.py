@@ -36,7 +36,7 @@ class Bet(models.Model):
     wallet = models.ForeignKey(Wallet, related_name='wallet_bets', on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=7, decimal_places=2, default=0)
     chosen_team = models.ForeignKey(Team, on_delete=models.PROTECT, blank=True, null=True)
-    chosen_user = models.ForeignKey(Profile, on_delete=models.PROTECT, blank=True, null=True)
+    chosen_user = models.ForeignKey(Wallet, on_delete=models.PROTECT, blank=True, null=True)
 
 
     open = "Open"

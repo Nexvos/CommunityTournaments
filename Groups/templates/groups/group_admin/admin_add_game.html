@@ -44,15 +44,15 @@
             <div class="form-check" style="position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; width: 100%;">
                 <div class="form-group" style="width: 100%;">
                     <select name="user_a" class="form-control" id="exampleFormControlSelect1" style="width: 35%; display: inline-block;">
-                      {% for profile in group.groups_profile.all %}
-                        <option value="{{ profile.user.id }}">{{ profile.user }}</option>
+                      {% for wallet in group.groups_wallet.all %}
+                        <option value="{{ wallet.id }}">{{ wallet.profile.user }}</option>
                       {% endfor %}
                     </select>
                 vs
 
                     <select name="user_b" class="form-control" id="exampleFormControlSelect1" style="width: 35%; display: inline-block;">
-                      {% for profile in group.groups_profile.all %}
-                        <option value="{{ profile.user.id }}">{{ profile.user }}</option>
+                      {% for wallet in group.groups_wallet.all %}
+                        <option value="{{ wallet.id }}">{{ wallet.profile.user }}</option>
                       {% endfor %}
                     </select>
                 </div>

@@ -59,6 +59,8 @@ class Profile(models.Model):
     def __str__(self):
         return self.user.username
 
+
+# TODO: Probable duplicate: Set colour/picture to match profile values on wallet creation
 class Wallet(models.Model):
     profile = models.ForeignKey(Profile, related_name='profiles_wallet', blank=False, null=False, on_delete=models.PROTECT)
     group = models.ForeignKey(CommunityGroup, related_name='groups_wallet', blank=False, null=False, on_delete=models.PROTECT)
@@ -66,7 +68,7 @@ class Wallet(models.Model):
     non_withdrawable_bank = models.DecimalField(max_digits=6, decimal_places=2, default=0)
     nickname = models.CharField(max_length=20, null=True, blank=True)
     picture_id = models.IntegerField(default=1, null=False, blank=False)
-    colour = models.CharField(max_length=7, null=True, blank=True)
+    colour = models.CharField(max_length=7, null=False, blank=False, default="df2020")
     ranking = models.IntegerField(default=0)
     founder = models.BooleanField(default=False, blank=False, null=False)
     admin = models.BooleanField(default=False, blank=False, null=False)

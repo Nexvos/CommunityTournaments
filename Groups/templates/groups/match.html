@@ -110,7 +110,7 @@ img {
     <div class="container fullWidth">
     <div class="row fullWidth">
         <div class="col-md-3 col-sm-2 d-none d-sm-block">
-            <img src="{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.picture.url }}{% else %}{% if game_bgg.match.user_a.picture %}{{ game_bgg.match.user_a.picture.url }}{% endif %}{% endif %}">
+            <img src="{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.picture.url }}{% else %}{{ image_user_a }}{% endif %}">
             <h3 id="team_a_info" style="font-size: 1.5rem;">50.00%</h3>
         </div>
         <div class="col-md-6 col-sm-8 col-xs-12" id="chart-widget">
@@ -125,7 +125,7 @@ img {
             </div>
         </div>
         <div class="col-md-3 col-sm-2 d-none d-sm-block">
-            <img src="{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.picture.url }}{% else %}{% if game_bgg.match.user_b.picture %}{{ game_bgg.match.user_b.picture.url }}{% endif %}{% endif %}">
+            <img src="{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.picture.url }}{% else %}{{ image_user_b }}{% endif %}">
             <h3 id="team_b_info" style="font-size: 1.5rem;">50.00%</h3>
         </div>
 </div>
@@ -152,7 +152,7 @@ var dataset = [
             name:'{{ bet.wallet.profile.user }}',
             amount:{{ bet.amount }},
             percent: {{ bet.amount|div:total_bet|mul:100 }},
-            team:'{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user }}{% endif %}',
+            team:'{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user.profile.user }}{% endif %}',
             colour:'#{{ bet.wallet.profile.colour }}'
             },
         {% endfor %}
@@ -180,11 +180,11 @@ var teamdata_b_percent = 0;
 
 // calculate the percentage and amount bet on each team
 for (i in grouped){
-   if (grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}') {
+   if (grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}') {
        teamdata_a_amount += grouped[i].amount;
        teamdata_a_percent += grouped[i].percent;
    }
-   else if(grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}'){
+   else if(grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}'){
        teamdata_b_amount += grouped[i].amount;
        teamdata_b_percent += grouped[i].percent;
    }
@@ -193,17 +193,17 @@ for (i in grouped){
 
 // construct data for the team pie (outside ring)
 var team_dataset = [{
-            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
             amount:teamdata_a_amount,
             percent: teamdata_a_percent,
-            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
             colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
             },
             {
-            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
             amount:teamdata_b_amount,
             percent: teamdata_b_percent,
-            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
             colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
             }];
 
@@ -211,17 +211,17 @@ var team_dataset = [{
 if (grouped === undefined || grouped.length == 0){
     team_dataset= [
         {
-            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
             amount:0,
             percent: 50,
-            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+            team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
             colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
             },
             {
-            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
             amount:0,
             percent: 50,
-            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+            team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
             colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
             }
             ];
@@ -245,7 +245,11 @@ InitialPie(grouped,totalamount,team_dataset);
 
 {% block content %}
 
-    <h1>{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %} vs {% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %} <small>{{ game_bgg.match.game_date|date:"d-F Y H:i" }}</small></h1>
+    <h1>{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}
+        vs
+        {% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}
+        <small>{{ game_bgg.match.start_datetime|date:"d-F Y H:i" }}</small>
+    </h1>
 
 <div class="row" style="margin-top: 20px">
         <div class="col-md-4">
@@ -253,8 +257,12 @@ InitialPie(grouped,totalamount,team_dataset);
                 <div class="form-group">
                     <label for="teamSelect">Team</label>
                     <select class="form-control" id="teamSelect" style="width: 95%" required>
-                      <option>{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}</option>
-                      <option>{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}</option>
+                      <option value="{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.id }}{% endif %}">
+                          {% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}
+                      </option>
+                      <option value="{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.id }}{% endif %}">
+                          {% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}
+                      </option>
                     </select>
                 </div>
                 <div class="input-group mb-3" style="width: 95%">
@@ -281,7 +289,7 @@ InitialPie(grouped,totalamount,team_dataset);
               {%  for bet in userbets %}
                 <tr id="transparentrow{{ forloop.counter }}">
                   <td style="width: 15%;font-weight: 700;">{{ forloop.counter }}</td>
-                  <td style="width: 60%;">{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user }}{% endif %}</td>
+                  <td style="width: 60%;">{% if bet.chosen_team %}{{ bet.chosen_team }}{% else %}{{ bet.chosen_user.profile.user }}{% endif %}</td>
                   <td style="width: 25%;">£{{ bet.amount }}</td>
                 </tr>
 
@@ -370,7 +378,7 @@ InitialPie(grouped,totalamount,team_dataset);
 
         function box_key_pressing() {
             // control + enter was pressed
-            if ((event.keyCode === 10 || event.keyCode === 13) && event.ctrlKey) {
+            if (event.keyCode === 10 || event.keyCode === 13)  {
                 send_msg();
             }
             // esc was pressed
@@ -416,11 +424,11 @@ function onMessage (evt) {
         var teamdata_b_percent = 0;
 
         for (i in message_grouped){
-           if (message_grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}') {
+           if (message_grouped[i].team=='{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}') {
                teamdata_a_amount += message_grouped[i].amount;
                teamdata_a_percent += message_grouped[i].percent;
            }
-           else if(message_grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}'){
+           else if(message_grouped[i].team=='{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}'){
                teamdata_b_amount += message_grouped[i].amount;
                teamdata_b_percent += message_grouped[i].percent;
            }
@@ -428,17 +436,17 @@ function onMessage (evt) {
 
         var message_team_dataset = [
                     {
-                    name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+                    name:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
                     amount:teamdata_b_amount,
                     percent: teamdata_b_percent,
-                    team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b }}{% endif %}',
+                    team:'{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b }}{% else %}{{ game_bgg.match.user_b.profile.user }}{% endif %}',
                     colour:'#{% if game_bgg.match.team_b %}{{ game_bgg.match.team_b.colour }}{% else %}{{ game_bgg.match.user_b.colour }}{% endif %}'
                     },
                     {
-                    name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+                    name:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
                     amount:teamdata_a_amount,
                     percent: teamdata_a_percent,
-                    team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a }}{% endif %}',
+                    team:'{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a }}{% else %}{{ game_bgg.match.user_a.profile.user }}{% endif %}',
                     colour:'#{% if game_bgg.match.team_a %}{{ game_bgg.match.team_a.colour }}{% else %}{{ game_bgg.match.user_a.colour }}{% endif %}'
                     }];
 

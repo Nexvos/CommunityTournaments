@@ -29,13 +29,43 @@ class UrlTests(TestCase):
         # Create a group to be used in URLs
         test_group = CommunityGroup.objects.create(name="testgroup")
 
-        # create a tournament for tournament url tests
-        test_tournament = Tournament.objects.create(name="test_tournament", owning_group=test_group, start_datetime=timezone.now())
-
         # Create users and match for match_page test
         user_1 = User.objects.create(username='testuser1')
         user_2 = User.objects.create(username='testuser2')
-        test_match = Match.objects.create(user_a=user_1.profile, user_b=user_2.profile, tournament=test_tournament, start_datetime=timezone.now())
+
+        # create group
+        group_name = "test_group_1"
+        invite_only = True
+        members_can_invite = True
+        header_background_colour = "496693"
+        header_text_colour = "496693"
+        daily_payout = 10
+
+        group_object = CommunityGroup.objects.create(
+            name=group_name,
+            private=invite_only,
+            members_can_inv=members_can_invite,
+            header_background_colour=header_background_colour,
+            header_text_colour=header_text_colour,
+            daily_payout=daily_payout
+        )
+
+        # Create wallet/ invite
+        wallet_1 = Wallet.objects.create(
+            profile=user_1.profile,
+            group=group_object,
+            status=Wallet.active
+        )
+        wallet_2 = Wallet.objects.create(
+            profile=user_2.profile,
+            group=group_object,
+            status=Wallet.active
+        )
+
+        # create a tournament for tournament url tests
+        test_tournament = Tournament.objects.create(name="test_tournament", owning_group=test_group, start_datetime=timezone.now())
+
+        test_match = Match.objects.create(user_a=wallet_1, user_b=wallet_2, tournament=test_tournament, start_datetime=timezone.now())
 
     def test_homepage(self):
         url = reverse('groups:home')
@@ -1299,6 +1329,12 @@ class GroupPageTests(TestCase):
         # Create a second user so a match can be created
         user_2 = User.objects.create(username='testuser2')
 
+        user_2_wallet = Wallet.objects.create(
+            profile=user_2.profile,
+            group=self.group_object,
+            status=Wallet.active
+        )
+
         # Create a tournament for the matches
         tournament_1 = Tournament.objects.create(
             name="tournament_1",
@@ -1309,80 +1345,80 @@ class GroupPageTests(TestCase):
 
         # Create matches with varying "start_datetime"s
         match_1 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now(),
             tournament=tournament_1
         )
         match_2 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=1),
             tournament=tournament_1
         )
         match_3 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=2),
             tournament=tournament_1
         )
         match_4 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=3),
             tournament=tournament_1
         )
         match_5 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=4),
             tournament=tournament_1
         )
         match_6 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=5),
             tournament=tournament_1
         )
         match_7 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=6),
             tournament=tournament_1
         )
         match_8 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=7),
             tournament=tournament_1
         )
         match_12 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=11),
             tournament=tournament_1
         )
         match_13 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=12),
             tournament=tournament_1
         )
         match_9 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=8),
             tournament=tournament_1
         )
         match_10 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=9),
             tournament=tournament_1
         )
         match_11 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=10),
             tournament=tournament_1
         )
@@ -1427,6 +1463,12 @@ class GroupPageTests(TestCase):
         # Create a second user so a match can be created
         user_2 = User.objects.create(username='testuser2')
 
+        user_2_wallet = Wallet.objects.create(
+            profile=user_2.profile,
+            group=self.group_object,
+            status=Wallet.active
+        )
+
         # Create a videogame to test
         videogame_name = "SC2"
         videogame_1 = Videogame.objects.create(
@@ -1461,38 +1503,38 @@ class GroupPageTests(TestCase):
 
         # Create matches with varying "start_datetime"s
         match_1 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now(),
             tournament=tournament_1
         )
         match_2 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=1),
             tournament=tournament_2
         )
         match_3 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=2),
             tournament=tournament_2
         )
         match_4 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=3),
             tournament=tournament_1
         )
         match_5 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=4),
             tournament=tournament_3
         )
         match_6 = Match.objects.create(
-            user_a=self.user.profile,
-            user_b=user_2.profile,
+            user_a=self.wallet,
+            user_b=user_2_wallet,
             start_datetime=timezone.now() + timezone.timedelta(hours=5),
             tournament=tournament_3
         )
@@ -1574,6 +1616,12 @@ class LazyLoadTests(TestCase):
             group=self.group_object,
             status=Wallet.active
         )
+        self.user_2_wallet = Wallet.objects.create(
+            profile=self.user_2.profile,
+            group=self.group_object,
+            status=Wallet.active
+        )
+
         # Create a videogame to test
         self.videogame_1 = Videogame.objects.create(
             name="SC2"
@@ -1612,8 +1660,8 @@ class LazyLoadTests(TestCase):
         self.tournament_3_matches = []
         for x in range(1, 16):
             y = Match.objects.create(
-                user_a=self.user.profile,
-                user_b=self.user_2.profile,
+                user_a=self.wallet,
+                user_b=self.user_2_wallet,
                 start_datetime=timezone.now() + timezone.timedelta(hours=x),
                 tournament=self.tournament_1
             )
@@ -1623,8 +1671,8 @@ class LazyLoadTests(TestCase):
 
         for x in range(16, 30):
             y = Match.objects.create(
-                user_a=self.user.profile,
-                user_b=self.user_2.profile,
+                user_a=self.wallet,
+                user_b=self.user_2_wallet,
                 start_datetime=timezone.now() + timezone.timedelta(hours=x),
                 tournament=self.tournament_2
             )
@@ -1634,8 +1682,8 @@ class LazyLoadTests(TestCase):
 
         for x in range(30, 31):
             y = Match.objects.create(
-                user_a=self.user.profile,
-                user_b=self.user_2.profile,
+                user_a=self.wallet,
+                user_b=self.user_2_wallet,
                 start_datetime=timezone.now() + timezone.timedelta(hours=x),
                 tournament=self.tournament_3
             )
@@ -1695,8 +1743,12 @@ class LazyLoadTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_2_(self):
+        user_3 = User.objects.create(username='testuser3')
+        user_3.set_password("12345")
+        user_3.save()
+
         # Log user in to user2
-        self.client.login(username='testuser2', password='12345')
+        self.client.login(username='testuser3', password='12345')
 
         # Assert that the user is logged in
         user = auth.get_user(self.client)
@@ -3254,7 +3306,11 @@ class AdminAddGameTests(TestCase):
             status=Wallet.active,
             admin=False
         )
-
+        self.tournament = Tournament.objects.create(
+            name="tournament_1",
+            owning_group=self.group_object,
+            start_datetime=timezone.now() + timezone.timedelta(hours=1)
+        )
         self.url = 'groups:adminPageAddGames'
 
     def test_1_redirect_when_not_logged(self):
@@ -3376,6 +3432,46 @@ class AdminAddGameTests(TestCase):
         # Assert that the user has NOT been redirected
         last_path = response.request['PATH_INFO']
         self.assertEqual(last_path, address)
+
+    def test_7_successful_post(self):
+        # Log user in to admin account
+        self.client.login(username='testuser_admin', password='12345')
+
+        # Ensure the wallet's status is active
+        self.assertEqual(self.wallet_admin.status, Wallet.active)
+
+        # Assert that the user is logged in
+        user = auth.get_user(self.client)
+        self.assertTrue(user.is_authenticated)
+
+        address = reverse(self.url, kwargs={'group_id': self.group_object.id})
+
+        # Make admin command
+        game_start_datetime = "21:39 - 17/02/2019"
+
+        # Convert string datetime's to python datetime's
+        tz = timezone.get_current_timezone()
+        game_start_datetime_python = tz.localize(datetime.strptime(game_start_datetime, '%H:%M - %d/%m/%Y'))
+
+        twitch_url = "https://www.twitch.tv/asd"
+
+        game_duration = 5
+
+        # Send the get request
+        response = self.client.post(address, {
+            "tournament_id": self.tournament.id,
+            "user_a": self.wallet_non_admin.id,
+            "user_b": self.wallet_admin.id,
+            "game_start_datetime": game_start_datetime,
+            "game_duration": game_duration,
+            "twitch_url": "https://www.twitch.tv/asd",
+        })
+
+        created_match = Match.objects.get(tournament=self.tournament, user_a=self.wallet_admin, user_b=self.wallet_non_admin)
+        self.assertEqual(created_match.start_datetime, game_start_datetime_python)
+        self.assertEqual(created_match.estimated_duration, timezone.timedelta(minutes=game_duration))
+        self.assertEqual(created_match.twitch_url, twitch_url)
+
 
 
 class MembersPageTests(TestCase):
@@ -3961,8 +4057,8 @@ class TournamentViewTests(TestCase):
         self.match_dict = {}
         for x in range(1, 16):
             y = Match.objects.create(
-                user_a=self.admin_user.profile,
-                user_b=self.non_admin_user.profile,
+                user_a=self.wallet_admin,
+                user_b=self.wallet_non_admin,
                 start_datetime=timezone.now() + timezone.timedelta(hours=x),
                 tournament=self.tournament_1
             )
@@ -4313,8 +4409,8 @@ class CompletedGameListTests(TestCase):
         self.match_dict = {}
         for x in range(1, 16):
             y = Match.objects.create(
-                user_a=self.admin_user.profile,
-                user_b=self.non_admin_user.profile,
+                user_a=self.wallet_admin,
+                user_b=self.wallet_non_admin,
                 start_datetime=timezone.now() + timezone.timedelta(hours=x),
                 tournament=self.tournament_1
             )
@@ -4323,8 +4419,8 @@ class CompletedGameListTests(TestCase):
             self.tournament_matches.append(g)
 
         y = Match.objects.create(
-            user_a=self.admin_user.profile,
-            user_b=self.non_admin_user.profile,
+            user_a=self.wallet_admin,
+            user_b=self.wallet_non_admin,
             start_datetime=timezone.now() + timezone.timedelta(hours=16),
             tournament=self.tournament_1,
             status=Match.finished
@@ -4334,8 +4430,8 @@ class CompletedGameListTests(TestCase):
         self.tournament_matches.append(g)
 
         y = Match.objects.create(
-            user_a=self.admin_user.profile,
-            user_b=self.non_admin_user.profile,
+            user_a=self.wallet_admin,
+            user_b=self.wallet_non_admin,
             start_datetime=timezone.now() + timezone.timedelta(hours=18),
             tournament=self.tournament_2,
             status=Match.finished_not_confirmed
@@ -4345,8 +4441,8 @@ class CompletedGameListTests(TestCase):
         self.tournament_matches.append(g)
 
         y = Match.objects.create(
-            user_a=self.admin_user.profile,
-            user_b=self.non_admin_user.profile,
+            user_a=self.wallet_admin,
+            user_b=self.wallet_non_admin,
             start_datetime=timezone.now() + timezone.timedelta(hours=17),
             tournament=self.tournament_1,
             status=Match.finished_confirmed
@@ -4356,8 +4452,8 @@ class CompletedGameListTests(TestCase):
         self.tournament_matches.append(g)
 
         y = Match.objects.create(
-            user_a=self.admin_user.profile,
-            user_b=self.non_admin_user.profile,
+            user_a=self.wallet_admin,
+            user_b=self.wallet_non_admin,
             start_datetime=timezone.now() + timezone.timedelta(hours=19),
             tournament=self.tournament_1,
             status=Match.finished_paid
@@ -4602,10 +4698,9 @@ class MatchViewTests(TestCase):
         self.match_1_start_datetime = timezone.now() - timezone.timedelta(minutes=1)
         self.match_1_duration = timezone.timedelta(minutes=2)
 
-        # Create 15 tournaments and append them to an array
         self.match_1 = Match.objects.create(
-            user_a=self.match_user_1.profile,
-            user_b=self.match_user_2.profile,
+            user_a=self.wallet_match_user_1,
+            user_b=self.wallet_match_user_2,
             start_datetime=self.match_1_start_datetime,
             tournament=self.tournament_1,
             estimated_duration=self.match_1_duration
@@ -4620,7 +4715,7 @@ class MatchViewTests(TestCase):
                 match_betting_group=self.match_1_betting_group,
                 wallet=self.wallet_non_admin,
                 amount=x*3,
-                chosen_user=self.match_user_1.profile
+                chosen_user=self.wallet_match_user_1
             )
             self.all_bets.append(y)
 
@@ -4628,14 +4723,14 @@ class MatchViewTests(TestCase):
             match_betting_group=self.match_1_betting_group,
             wallet=self.wallet_admin,
             amount=10,
-            chosen_user=self.match_user_1.profile
+            chosen_user=self.wallet_match_user_1
         )
         self.all_bets.append(self.user_bet_1)
         self.user_bet_2 = Bet.objects.create(
             match_betting_group=self.match_1_betting_group,
             wallet=self.wallet_admin,
             amount=10,
-            chosen_user=self.match_user_2.profile
+            chosen_user=self.wallet_match_user_2
         )
         self.all_bets.append(self.user_bet_2)
 

@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
-from Profiles.models import Profile, Team
+from Profiles.models import Profile, Team, Wallet
 from Groups.models import CommunityGroup
 from datetime import timedelta
 
@@ -22,8 +22,6 @@ class Tournament(models.Model):
     name = models.CharField(max_length=120, null=False, blank=False)
     api_tournament_id = models.IntegerField(unique=True, null=True, blank=True)
     api_modified_at = models.DateTimeField('api_modified_at',null=True, blank=True)
-
-    groups = models.ManyToManyField(CommunityGroup, related_name='group_tournaments') # Do not use for now
 
     owning_group = models.ForeignKey(
         CommunityGroup,
@@ -70,8 +68,8 @@ class Match(models.Model):
     team_a = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='%(class)s_team_a', blank=True,null=True)
     team_b = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='%(class)s_team_b', blank=True,null=True)
 
-    user_a = models.ForeignKey(Profile, on_delete=models.PROTECT, related_name='%(class)s_user_a', blank=True,null=True)
-    user_b = models.ForeignKey(Profile, on_delete=models.PROTECT, related_name='%(class)s_user_b', blank=True,null=True)
+    user_a = models.ForeignKey(Wallet, on_delete=models.PROTECT, related_name='%(class)s_user_a', blank=True,null=True)
+    user_b = models.ForeignKey(Wallet, on_delete=models.PROTECT, related_name='%(class)s_user_b', blank=True,null=True)
 
     tournament = models.ForeignKey(Tournament, related_name='tournament_matches', blank=False, null=False, on_delete=models.PROTECT)
     start_datetime = models.DateTimeField('Game start datetime')
@@ -94,7 +92,6 @@ class Match(models.Model):
         blank=False,
         null=False
     )
-
 
     not_started = "not_started"
     starting = "Starting"
