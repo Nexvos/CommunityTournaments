@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load staticfiles %}
+
+
+{% block content %}
+<div class='row'>
+<div class='col-sm-6 offset-sm-3'>
+<h1>Register for free!</h1>
+<br>
+<form method="post" action="{% url 'django_registration_register' %}">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+    {{ form.username.errors }}
+    <span data-toggle="tooltip" data-placement="right" title="{{ form.username.help_text }}">
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='text' class='form-control' name='username' placeholder='Username' />
+    </div>
+    </span>
+
+    {{ form.email.errors }}
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='text' class='form-control' name='email' placeholder='Email address' />
+    </div>
+
+    {{ form.password.errors }}
+    <span data-toggle="tooltip" data-placement="right" data-html="true" title="{{ form.password1.help_text }}">
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='password' class='form-control' name='password1' placeholder='Password' />
+    </div>
+    </span>
+
+    {{ form.password.errors }}
+    <span data-toggle="tooltip" data-placement="right" title="{{ form.password2.help_text }}">
+    <div class='form-group' style="margin-right: 3px;">
+        <input type='password' class='form-control' name='password2' placeholder='Password confirmation' />
+    </div>
+    </span>
+
+  <input class='btn btn-block btn-primary' type="submit" value="{% trans 'Join' %}" />
+</form>
+</div>
+</div>
+
+<hr/>
+<div class='row'>
+<div class='col-sm-6 offset-sm-3 text-align-center'>
+<p>Need to <a href="{% url 'login' %}">Login</a>?</p>
+</div>
+</div>
+
+<script>
+$(function () {
+  $('[data-toggle="tooltip"]').tooltip()
+});
+</script>
+
+{% endblock %}

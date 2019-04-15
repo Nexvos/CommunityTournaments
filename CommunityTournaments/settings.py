@@ -21,7 +21,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'z2ql3k2r@-0$@8j6!lp@*z3t8+2#41)!1o4y&42$)4h0%9&uzt'
+
+SECRET_KEY = os.environ['SECRET_KEY']
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if os.environ['DEVELOPMENT'] == "True":
@@ -154,6 +155,18 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Django Registration Settings
+ACCOUNT_ACTIVATION_DAYS = 7  # One-week activation window
+
+# Email Settings
+DEFAULT_FROM_EMAIL = 'noreply@mcerretti.com'
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = os.environ['EMAIL_KEY']
+EMAIL_USE_TLS = True
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())

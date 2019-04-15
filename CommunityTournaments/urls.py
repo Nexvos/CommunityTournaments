@@ -22,6 +22,7 @@ from django.conf import settings
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
+    path('accounts/', include('django_registration.backends.activation.urls')),
     path('', include('Groups.urls'), name="groups"),
     path('', include('Profiles.urls'), name="profiles"),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

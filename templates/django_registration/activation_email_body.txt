@@ -1,0 +1,10 @@
+Hello,
+
+Please click the link below to activate your account.
+
+{{ site }}{% url 'django_registration_activate' activation_key %}
+
+
+The above link is valid for {{ expiration_days }} days.
+
+-Team eSports Groups
