@@ -67,31 +67,51 @@ tbody {
                   </a>
                 </div>
             </div>
-            <div class="col-md-5">
+            <div class='col-sm-5' style="position: relative;">
+                {% if not request.user.is_authenticated %}
+                <div style="position: absolute; bottom: 0;">
+                    <p class='lead text-align-center'>Join Now!</p>
+                    <form method='POST' action='{% url 'django_registration_register' %}'>{% csrf_token %}
+                        {{ form.non_field_errors }}
 
 
-                    {% if ongoing_tournamnts %}
-                  <table class="table">
-                      <thead class="thead-dark">
-                        <tr>
-                          <th scope="col">Game</th>
-                          <th scope="col">Tournament</th>
-                          <th scope="col">Start date</th>
-                          <th scope="col">End date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                        <div class="row">
+                            <div class="form-group col-sm-6" style="margin-bottom: 10px;">
+                                {{ form.username.errors }}
+                                <label for="exampleInputUsername">Username<span class="asteriskField">*</span></label>
+                                <input type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp" name='username' placeholder="Enter username">
+            {#                    <small id="usernameHelp" class="form-text text-muted">Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.</small>#}
+                            </div>
 
+                            <div class="form-group col-sm-6" style="margin-bottom: 10px;">
+                                {{ form.email.errors }}
+                                <label for="exampleInputEmail1">Email address<span class="asteriskField">*</span></label>
+                                <input type="email" class="form-control" name="email" id="exampleInputEmail1" placeholder="Enter email">
+                            </div>
+                        </div>
+                        <div class="row" style="margin-bottom: 15px;">
+                            <div class="form-group col-sm-6">
+                                {{ form.password.errors }}
+                                <label for="exampleInputPassword1">Password<span class="asteriskField">*</span></label>
+                                <input type="password" class="form-control" name="password1" id="exampleInputPassword1" placeholder="Password">
+                            </div>
 
-
-
-
-                  </tbody>
-
-                </table>
+                            <div class="form-group col-sm-6">
+                                <label for="exampleInputPassword2">Confirm password<span class="asteriskField">*</span></label>
+                                <input type="password" class="form-control" name="password2" id="exampleInputPassword2" placeholder="Password" >
+                            </div>
+                        </div>
+                        <div>
+                            <button type='submit' class='btn btn-primary' style="width: 100%">Join</button>
+                        </div>
+                    <br>
+                    </form>
+                </div>
                 {% else %}
+                <p class='lead text-align-center'>Ut quis quam sit amet </p>
+                   <p>  Please use the following link to return to the homepage:
 
-                        <p> no ongoing tournaments </p>
+                </p>
                 {% endif %}
             </div>
         </div>
@@ -108,43 +128,11 @@ tbody {
 
 
     <div class='col-sm-6'>
-        {% if not request.user.is_authenticated %}
-        <p class='lead text-align-center'>Join Now!</p>
-        <form method='POST' action='url'>{% csrf_token %}
-            <div class="row">
-                <div class="form-group col-sm-6" style="margin-bottom: 10px;">
-                    <label for="exampleInputUsername">Username<span class="asteriskField">*</span></label>
-                    <input type="text" class="form-control" id="exampleInputUsername" aria-describedby="usernameHelp" name='username' placeholder="Enter username">
-{#                    <small id="usernameHelp" class="form-text text-muted">Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.</small>#}
-                </div>
 
-                <div class="form-group col-sm-6" style="margin-bottom: 10px;">
-                    <label for="exampleInputEmail1">Email address<span class="asteriskField">*</span></label>
-                    <input type="email" class="form-control" name="email" id="exampleInputEmail1" placeholder="Enter email">
-                </div>
-            </div>
-            <div class="row" style="margin-bottom: 15px;">
-                <div class="form-group col-sm-6">
-                    <label for="exampleInputPassword1">Password<span class="asteriskField">*</span></label>
-                    <input type="password" class="form-control" name="password1" id="exampleInputPassword1" placeholder="Password">
-                </div>
-
-                <div class="form-group col-sm-6">
-                    <label for="exampleInputPassword2">Confirm password<span class="asteriskField">*</span></label>
-                    <input type="password" class="form-control" name="password2" id="exampleInputPassword2" placeholder="Password" >
-                </div>
-            </div>
-            <div>
-                <button type='submit' class='btn btn-primary' style="width: 100%">Join</button>
-            </div>
-        <br>
-        </form>
-        {% else %}
         <p class='lead text-align-center'>Ut quis quam sit amet </p>
            <p> consectetur adipiscing elit. Praesent ligula ante, feugiat eu massa ac, elementum fermentum risus. Duis eu consequat libero. Vestibulum semper non ligula ut commodo. Sed non est in felis gravida varius. Mauris commodo felis massa, dignissim consequat arcu interdum interdum. Proin varius eleifend gravida. Fusce eu nunc et elit varius fermentum ac sit amet nulla.
 
         </p>
-        {% endif %}
     </div>
 
 {#	<div class='col-sm-3'>#}
