@@ -1,2 +1,2 @@
-web: gunicorn CommunityTournaments.wsgi:application --log-file -
-worker: python manage.py runworker -v2
+web: daphne CommunityTournaments.asgi:application --log-file -
+worker: python manage.py runworker channels -v2
