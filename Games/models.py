@@ -3,6 +3,7 @@ from django.core.exceptions import ValidationError
 from Profiles.models import Profile, Team, Wallet
 from Groups.models import CommunityGroup
 from datetime import timedelta
+from django.contrib.staticfiles.templatetags.staticfiles import static
 
 # Create your models here.
 
@@ -10,9 +11,14 @@ from datetime import timedelta
 class Videogame(models.Model):
     name = models.CharField(unique=True, max_length=30, default="LoL")
     api_videogame_id = models.IntegerField(unique=True, null=True, blank=True)
-    picture = models.ImageField(upload_to="teamLogos", null=True, blank=True)
+    picture_id = models.IntegerField(default=1, null=False, blank=False)
     colour = models.CharField(max_length=7, null=False, blank=False, default="D3D3D3")
     alt_colour = models.CharField(max_length=7, null=False, blank=False, default="D3D3D3")
+
+    @property
+    def picture_url(self):
+        image = "img/game_logos/logo_" + str(self.picture_id) + ".png"
+        return static(image)
 
     def __str__(self):
         return self.name

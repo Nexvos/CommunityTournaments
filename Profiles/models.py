@@ -4,6 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from Groups.models import CommunityGroup
+from django.contrib.staticfiles.templatetags.staticfiles import static
 import random
 
 # Create your models here.
@@ -47,6 +48,11 @@ class Profile(models.Model):
         through_fields=('profile', 'group'),
         related_name="groups_profile"
     )
+
+    @property
+    def picture_url(self):
+        image = "img/profile_pictures/picture_" + str(self.picture_id) + ".png"
+        return static(image)
 
     @property
     def colour_rgb(self):
@@ -107,6 +113,10 @@ class Wallet(models.Model):
         self.modified = timezone.now()
         return super(Wallet, self).save(*args, **kwargs)
 
+    @property
+    def picture_url(self):
+        image = "img/profile_pictures/picture_" + str(self.picture_id) + ".png"
+        return static(image)
 
     @property
     def bank(self):
@@ -135,12 +145,18 @@ class Wallet(models.Model):
     def __str__(self):
         return str(self.profile.user.username) + "'s Wallet for: " + str(self.group.name)
 
+
 class Team(models.Model):
     name = models.CharField(max_length=200, null=False)
     api_team_id = models.IntegerField(unique=True, null=True, blank=True)
 
-    picture = models.ImageField(upload_to="teamLogos", null=True, blank=True)
+    picture_id = models.IntegerField(default=1, null=False, blank=False)
     colour = models.CharField(max_length=7, null=False, blank=False, default="D3D3D3")
+
+    @property
+    def picture_url(self):
+        image = "img/game_logos/logo_" + str(self.picture_id) + ".png"
+        return static(image)
 
     @property
     def colour_rgb(self):

@@ -924,11 +924,9 @@ def match_view(request, betting_group_id, group_id):
     game_bgg = get_object_or_404(MatchBettingGroup, pk=betting_group_id)
     qs = game_bgg.mbg_bets.all()
 
-    image_user_a = "img/profile_pictures/picture_" + str(game_bgg.match.user_a.picture_id) + ".png"
-    static_image_user_a = static(image_user_a)
+    static_image_user_a = game_bgg.match.user_a.picture_url
 
-    image_user_b = "img/profile_pictures/picture_" + str(game_bgg.match.user_b.picture_id) + ".png"
-    static_image_user_b = static(image_user_b)
+    static_image_user_b = game_bgg.match.user_b.picture_url
 
     total_bet = 0
     for bet in qs:

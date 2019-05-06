@@ -46,7 +46,7 @@ svg {
             <div class="widget rounded" style="padding-top: 10px; padding-bottom: 10px; position: relative; background-color: rgba(0, 0, 0, 0.03); border-bottom: 1px #b5b5b5 solid;">
                 <div id="chartplaceholder{{ forloop.counter }}" class="chart-container"></div>
                 <div style="position: absolute; height: 35px;width: 35px;left:0px; bottom: 0px; border: 1px #343a40 solid; background-color: #{{ game_betting_group.match.tournament.videogame.colour }};">
-                    <img src="{% if game_betting_group.match.tournament.videogame.picture %}{{ game_betting_group.match.tournament.videogame.picture.url }}{% endif %}" style="margin-left: 5px; margin-bottom: 5px; margin-top: 5px; margin-right: 5px;">
+                    <img src="{% if game_betting_group.match.tournament.videogame.picture_id %}{{ game_betting_group.match.tournament.videogame.picture_url }}{% endif %}" style="margin-left: 5px; margin-bottom: 5px; margin-top: 5px; margin-right: 5px;">
                 </div>
                 {% ifequal game_betting_group.match.status game_betting_group.match.running %}
                     <div style="top: 0; right: 0; position: absolute; background-color: #343a40; border-radius: 0px 3px 0px 10px; border-bottom: 1px #b5b5b5 solid; border-left: 1px #b5b5b5 solid;">

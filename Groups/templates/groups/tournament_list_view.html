@@ -38,7 +38,7 @@
                     onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                     onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
             >
-                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;"> {% endif %} &nbsp; {{ tournament.name }}
+                {% if tournament.videogame.picture_id %}<img src="{{ tournament.videogame.picture_url }}" style="width: 20px;"> {% endif %} &nbsp; {{ tournament.name }}
             </a>
 
           {% endfor %}
@@ -65,7 +65,7 @@
                     onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                     onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
             >
-                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
+                {% if tournament.videogame.picture_id %}<img src="{{ tournament.videogame.picture_url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
             </a>
 
           {% endfor %}
@@ -89,7 +89,7 @@
                     onmouseover="this.style.backgroundColor='#{{ tournament.videogame.alt_colour }}'"
                     onmouseout="this.style.backgroundColor='#{{ tournament.videogame.colour }}'"
             >
-                {% if tournament.videogame.picture %}<img src="{{ tournament.videogame.picture.url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
+                {% if tournament.videogame.picture_id %}<img src="{{ tournament.videogame.picture_url }}" style="width: 20px;">{% endif %} &nbsp; {{ tournament.name }}
             </a>
 
           {% endfor %}

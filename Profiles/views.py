@@ -90,8 +90,8 @@ def profile_details_default(request):
                     user.profile.save()
 
     print(request.POST)
-    image = "img/profile_pictures/picture_" + str(user.profile.picture_id) + ".png"
-    image_url = static(image)
+    image_url = user.profile.picture_url
+
     possible_images = []
     for x in range(number_of_custom_images):
         y = "img/profile_pictures/picture_" + str(x + 1) + ".png"
@@ -170,8 +170,8 @@ def profile_details_group(request, group_id):
 
     wallets = user.profile.profiles_wallet.all()
 
-    image = "img/profile_pictures/picture_" + str(wallet.picture_id) + ".png"
-    image_url = static(image)
+    image_url = wallet.picture_url
+
     possible_images = []
     for x in range(number_of_custom_images):
         y = "img/profile_pictures/picture_" + str(x + 1) + ".png"
