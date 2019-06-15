@@ -579,7 +579,6 @@ def adminPageAddTournament(request, group_id):
             new_tournament.owning_group = group
 
             new_tournament.save()
-            new_tournament.groups.add(group)
             messages.success(request, 'Form submission successful')
 
 

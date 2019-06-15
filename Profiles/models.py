@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from Groups.models import CommunityGroup
-from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.templatetags.static import static
 import random
 
 # Create your models here.
@@ -172,7 +172,7 @@ class Team(models.Model):
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        profile = Profile.objects.create(user=instance, picture_id=random.randint(0, number_of_custom_images))
+        profile = Profile.objects.create(user=instance, picture_id=random.randint(1, number_of_custom_images))
 
 # Update the number of users in a community group after wallet creation
 @receiver(post_save, sender=Wallet)

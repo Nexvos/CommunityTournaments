@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import django_heroku
 import os
 
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,6 +24,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 
 SECRET_KEY = os.environ['SECRET_KEY']
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 if os.environ['DEVELOPMENT'] == "True":
@@ -46,14 +48,14 @@ INSTALLED_APPS = [
     #3rd party apps
     'channels',
     'mathfilters',
+    'celery',
+    'django_celery_results',
 
     # My apps
     'Groups',
     'Profiles',
     'Games',
-    'Bets'
-
-
+    'Bets',
 ]
 
 MIDDLEWARE = [
@@ -170,3 +172,12 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 # Activate Django-Heroku.
 django_heroku.settings(locals())
+
+# Celery
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_CACHE_BACKEND = 'django-cache'
+
+# use json format for everything
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

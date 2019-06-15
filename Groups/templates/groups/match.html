@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% load staticfiles %}
+{% load static %}
 {% load mathfilters %}
 
 
@@ -99,8 +99,6 @@ img {
 
 
 {% block extracss %}
-    {% load static %}
-
     <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
     <meta charset="UTF-8">
 {% endblock %}

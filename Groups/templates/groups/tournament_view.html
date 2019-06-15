@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load staticfiles %}
+{% load static %}
 
 
 {% block head_title %}Betting | {{ block.super }}{% endblock %}
@@ -7,8 +7,6 @@
 
 
 {% block extracss %}
-    {% load static %}
-
     <link rel="stylesheet" type="text/css" href="{% static 'groups/style.css' %}" />
     <meta charset="UTF-8">
     <script src="{% static 'groups/miniPie.js' %}"></script>

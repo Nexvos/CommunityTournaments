@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from Profiles.models import Profile, Team, Wallet
 from Groups.models import CommunityGroup
 from datetime import timedelta
-from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.templatetags.static import static
 
 # Create your models here.
 

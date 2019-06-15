@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-{% load staticfiles %}
+{% load static %}
 
 
 {% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
 
 {% block extracss %}
-    {% load static %}
     <style>
         main {
         background-color: #e9ecef;
@@ -24,11 +23,11 @@
 
 {% block content %}
 <div class="row" style="margin-bottom: 1.5rem;">
-    <div class="col-md-4">
+    <div class="col-md-4" id="SearchAndCreate">
         <a class='btn btn-primary' href="{% url 'groups:groupSearch' %}" style="height: 12rem;width: 100%; margin-bottom: 5px;"><p style="font-size: 3rem;white-space: normal;margin-bottom: 0;">Search for Groups<p></p></a>
         <a class='btn btn-info' href="{% url 'groups:createGroup' %}" style="height: 4rem; width: 100%; font-size: 200%; line-height: 3rem; text-align:center;">Create Group</a>
     </div>
-    <div class="col-md-8">
+    <div class="col-md-8" id="CurrentGroups">
          <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
               <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Current Groups</span></h5>
               <div class="card-body" style="padding: 0;">
@@ -62,102 +61,193 @@
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-8" id="Invites">
+        <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
+              <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Group Invites</span></h5>
+              <div class="card-body" style="padding: 0;">
+                <table class="table table-striped header-fixed" style="margin-bottom: 0;">
+                  <thead>
+                   <tr style="border-bottom: 2px solid #dee2e6;">
+                      <th scope="col" style="width: 54%; border-bottom: 0;">Group Name</th>
+                      <th scope="col" style="width: 30%; border-bottom: 0;">Inviter Name</th>
+                      <th scope="col" style="width: 16%; border-bottom: 0;"></th>
+                    </tr>
+                  </thead>
+                  <tbody style="height: auto; overflow: auto; max-height: 180px;">
+                    {% for item in invites %}
+                         <tr style="background-color: {% ifequal bet.status bet.paid %}rgba(0,255,0,0.1){% else %}rgba(255,0,0,0.1) {% endifequal %}">
+                          <td style="width: 54%;"><a href="{% url "groups:groupPage" item.group.id %}">{{ item.group.name }}</a></td>
+                          <td style="width: 30%;">{{ item.inviter }}</td>
+                          <td style="width: 16%;">
+                              <div style="float: right;">
+                                  <form action="{% url 'groups:home' %}" method="post">{% csrf_token %}
+                                      <input type="hidden" value={{ item.id }} name="wallet_id">
 
+                                      <button
+                                              class="btn"
+                                              name="accept_invite"
+                                              value=True
+                                              style="
+                                                font-size: 82%;
+                                                background-color: #4CAF50;
+                                                color: white;
+                                                font-weight: 500;
+                                                padding: initial;
+                                                width: 25px;
+                                                height: 25px;"
+                                              type="submit"
+                                      >
+                                        <i class="fas fa-check"></i>
+                                      </button>
+                                      <button
+                                              class="btn"
+                                              name="accept_invite"
+                                              value=False
+                                              style="
+                                                font-size: 82%;
+                                                background-color: #f44336;
+                                                color: white;
+                                                font-weight: 500;
+                                                padding: initial;
+                                                width: 25px;
+                                                height: 25px;"
+                                              type="submit"
 
-
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
-                  <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Group Invites</span></h5>
-                  <div class="card-body" style="padding: 0;">
-                    <table class="table table-striped header-fixed" style="margin-bottom: 0;">
-                      <thead>
-                       <tr style="border-bottom: 2px solid #dee2e6;">
-                          <th scope="col" style="width: 54%; border-bottom: 0;">Group Name</th>
-                          <th scope="col" style="width: 30%; border-bottom: 0;">Inviter Name</th>
-                          <th scope="col" style="width: 16%; border-bottom: 0;"></th>
+                                      >
+                                        <i class="fas fa-times"></i>
+                                      </button>
+                                  </form>
+                              </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody style="height: auto; overflow: auto; max-height: 180px;">
-                        {% for item in invites %}
-                             <tr style="background-color: {% ifequal bet.status bet.paid %}rgba(0,255,0,0.1){% else %}rgba(255,0,0,0.1) {% endifequal %}">
-                              <td style="width: 54%;"><a href="{% url "groups:groupPage" item.group.id %}">{{ item.group.name }}</a></td>
-                              <td style="width: 30%;">{{ item.inviter }}</td>
-                              <td style="width: 16%;">
-                                  <div style="float: right;">
-                                      <form action="{% url 'groups:home' %}" method="post">{% csrf_token %}
-                                          <input type="hidden" value={{ item.id }} name="wallet_id">
-
-                                          <button
-                                                  class="btn"
-                                                  name="accept_invite"
-                                                  value=True
-                                                  style="
-                                                    font-size: 82%;
-                                                    background-color: #4CAF50;
-                                                    color: white;
-                                                    font-weight: 500;
-                                                    padding: initial;
-                                                    width: 25px;
-                                                    height: 25px;"
-                                                  type="submit"
-                                          >
-                                            <i class="fas fa-check"></i>
-                                          </button>
-                                          <button
-                                                  class="btn"
-                                                  name="accept_invite"
-                                                  value=False
-                                                  style="
-                                                    font-size: 82%;
-                                                    background-color: #f44336;
-                                                    color: white;
-                                                    font-weight: 500;
-                                                    padding: initial;
-                                                    width: 25px;
-                                                    height: 25px;"
-                                                  type="submit"
-
-                                          >
-                                            <i class="fas fa-times"></i>
-                                          </button>
-                                      </form>
-                                  </div>
-                              </td>
-                            </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
 {#                <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">#}
 {#                  yes#}
 {#                </div>#}
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
-                  <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Admin Access</span></h5>
-                  <div class="card-body" style="padding: 0;">
-                    <table class="table table-striped header-fixed" style="margin-bottom: 0;">
-                      <thead>
-                        <tr style="border-bottom: 2px solid #dee2e6;">
-                          <th scope="col" style="width: 100%; border-bottom: 0;">Group Name</th>
-                        </tr>
-                      </thead>
-                      <tbody style="height: auto; overflow: auto; max-height: 180px;">
-                      {% for item in admin_wallets %}
-                        <tr style="background-color: {% ifequal bet.status bet.paid %}rgba(0,255,0,0.1){% else %}rgba(255,0,0,0.1) {% endifequal %}">
-                            <td style="width: 52%;"><a href="{% url "groups:groupPage" item.group.id %}">{{ item.group.name }}</a></td>
-                        </tr>
-                      {% endfor %}
-                      </tbody>
-                    </table>
-                  </div>
-{#                <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">#}
-{#                  yes#}
-{#                </div>#}
-            </div>
         </div>
     </div>
+    <div class="col-md-4" id="AdminGroups">
+        <div class="card" style="border: 1px solid #b5b5b5;height: 100%;">
+              <h5 class="card-header" style="background-color: rgba(0, 0, 0, 0.02);"> <span data-toggle="tooltip" data-placement="right" title="Only 4 nearest tournaments displayed">Admin Access</span></h5>
+              <div class="card-body" style="padding: 0;">
+                <table class="table table-striped header-fixed" style="margin-bottom: 0;">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #dee2e6;">
+                      <th scope="col" style="width: 100%; border-bottom: 0;">Group Name</th>
+                    </tr>
+                  </thead>
+                  <tbody style="height: auto; overflow: auto; max-height: 180px;">
+                  {% for item in admin_wallets %}
+                    <tr style="background-color: {% ifequal bet.status bet.paid %}rgba(0,255,0,0.1){% else %}rgba(255,0,0,0.1) {% endifequal %}">
+                        <td style="width: 52%;"><a href="{% url "groups:groupPage" item.group.id %}">{{ item.group.name }}</a></td>
+                    </tr>
+                  {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+{#                <div class="card-footer" style="padding: 0; background-color: rgba(0, 0, 0, 0.02);">#}
+{#                  yes#}
+{#                </div>#}
+        </div>
+    </div>
+</div>
+
+<div style="position: absolute; bottom: 0.25rem; right: 0.25rem;">
+ <a href="#" onclick="help()">Need help?</a>
+</div>
+
+<script>
+function help() {
+    $("body").append('<div id = "greydiv" style="height: 100vh;\n' +
+        '    width: 100vw;\n' +
+        '    display: block;\n' +
+        '    background-color: rgba(0,0,0,0.5);\n' +
+        '    z-index: 0;\n' +
+        '    top: 0;\n' +
+        '    position: absolute;"' +
+        'data-helppage=1>' +
+        '</div>' +
+        '<div id="helpButtons" style="' +
+        '    display: block;\n' +
+        '    z-index: 1;\n' +
+        '    bottom: 2rem;\n' +
+        '    left: 45vw;\n' +
+        '    position: absolute;">' +
+        '<ul class="pagination">\n' +
+        '    <li class="page-item" onclick="previousHelp()">\n' +
+        '      <span class="page-link">Previous</span>\n' +
+        '    </li>\n' +
+        '    <li class="page-item" onclick="nextHelp()">\n' +
+        '      <span class="page-link">Next</span>\n' +
+        '    </li>\n' +
+        '</ul>' +
+        '</div>'
+    );
+    displayHelp();
+};
+function displayHelp() {
+    {# Fetch page number and increase by 1#}
+    var greydiv = $("#greydiv");
+    var helpPage = greydiv.data("helppage");
+
+    var SearchAndCreate = $("#SearchAndCreate");
+    var CurrentGroups = $("#CurrentGroups");
+    var Invites = $("#Invites");
+    var AdminGroups = $("#AdminGroups");
+
+    {#Set z-index for all elements to 0 #}
+    SearchAndCreate.css('z-index',0);
+    CurrentGroups.css('z-index',0);
+    Invites.css('z-index',0);
+    AdminGroups.css('z-index',0);
+
+    if(helpPage == 1) {
+        SearchAndCreate.css('z-index',2);
+        console.log(helpPage);
+    }
+    else if(helpPage == 2) {
+        CurrentGroups.css('z-index',2);
+        console.log(helpPage);
+    }
+    else if(helpPage == 3) {
+        Invites.css('z-index',2);
+        console.log(helpPage);
+    }
+    else if(helpPage == 4) {
+        AdminGroups.css('z-index',2);
+        console.log(helpPage);
+    }
+    else {
+        var helpButtons = $("#helpButtons");
+        greydiv.remove();
+        helpButtons.remove();
+    };
+};
+
+function nextHelp(){
+    {# Fetch page number and increase by 1#}
+    var greydiv = $("#greydiv");
+    var helpPage = greydiv.data("helppage") + 1;
+
+    greydiv.data("helppage", helpPage);
+
+    displayHelp();
+};
+
+function previousHelp(){
+    {# Fetch page number and increase by 1#}
+    var greydiv = $("#greydiv");
+    var helpPage = greydiv.data("helppage") - 1;
+
+    greydiv.data("helppage", helpPage);
+
+    displayHelp();
+};
+
+</script>
 
 {% endblock %}

@@ -1,20 +1,15 @@
 {% extends "base.html" %}
 
-{% load staticfiles %}
+{% load static %}
 
 
 
 {% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
 
 {% block extracss %}
-    {% load static %}
-    <link rel="stylesheet" type="text/css" href="{% static 'community/treeview.css' %}" />
     <style>
         main {
         background-color: #e9ecef;
-    }
-    .home-wide {
-        margin-top: 2rem;
     }
     body { height:100vh; }
     </style>
@@ -172,17 +167,4 @@
     </div>
 </div>
 </form>
-<script>
-$(".acidjs-css3-treeview").delegate("label input:checkbox", "change", function() {
-    var
-        checkbox = $(this),
-        nestedList = checkbox.parent().next().next(),
-        selectNestedListCheckbox = nestedList.find("label:not([for]) input:checkbox");
-
-    if(checkbox.is(":checked")) {
-        return selectNestedListCheckbox.prop("checked", true);
-    }
-    selectNestedListCheckbox.prop("checked", false);
-});
-</script>
 {% endblock %}

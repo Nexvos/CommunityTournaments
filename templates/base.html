@@ -1,4 +1,4 @@
-{% load staticfiles %}
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -25,7 +25,7 @@
 
   <body>
   {% include 'navbar.html' %}
-<main class="container-fluid" style=" padding: 0; min-height: inherit; font-size: 80%;">
+<main class="container-fluid" style=" padding: 0; min-height: 100%; font-size: 80%;">
 
 {% if form.errors %}
     {% for field in form %}

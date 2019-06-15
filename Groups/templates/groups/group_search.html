@@ -1,19 +1,15 @@
 {% extends "base.html" %}
 
-{% load staticfiles %}
+{% load static %}
 
 
 
 {% block head_title %}Bets Admin | {{ block.super }}{% endblock %}
 
 {% block extracss %}
-    {% load static %}
     <style>
         main {
         background-color: #e9ecef;
-    }
-    .home-wide {
-        margin-top: 2rem;
     }
     body { height:100vh; }
     </style>
